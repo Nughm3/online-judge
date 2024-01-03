@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - {{ contest_name }}{% endblock %}
+
+{% block main %}
+<hgroup>
+  <h1>Leaderboard</h1>
+  <h6><a href="/contest/{{ session_id }}">{{ contest_name }}</a></h6>
+</hgroup>
+
+<figure>
+  <table role="grid">
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">User</th>
+        <th scope="col">Score</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr hx-get="/contest/{{ session_id }}/leaderboard_table?page=1" hx-trigger="load" hx-swap="outerHTML"></tr>
+    </tbody>
+  </table>
+</figure>
+{% endblock %}

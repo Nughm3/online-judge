@@ -1,0 +1,17 @@
+.navbar {
+  margin: 1rem;
+}
+
+.navbar .title {
+  vertical-align: middle;
+}
+
+.navbar .logo {
+  max-width: 48px;
+  height: auto;
+  vertical-align: middle;
+}
+
+.error {
+  color: #d93526;
+}

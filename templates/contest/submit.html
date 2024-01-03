@@ -1,0 +1,105 @@
+<div id="submission-container">
+  {% if accepting_submissions %}
+  <form hx-post="/contest/{{ session_id }}/submit/{{ task_id }}" hx-encoding="multipart/form-data"
+    hx-target="#submission-container">
+    <div class="grid">
+      <input id="code" type="file" name="code" />
+
+      <select id="language" name="language">
+        {% for language in languages %}
+        <option>{{ language }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button>Submit</button>
+  </form>
+  {% else %}
+  <p><small>This task is no longer accepting submissions.</small></p>
+  {% endif %}
+
+  <hr>
+
+  {% if !reports.is_empty() %}
+  {% set last = reports.last().unwrap() %}
+  <h6>Latest submission</h6>
+
+  {% if let Some(compile_error) = last.compile_error %}
+  <article>
+    <header>
+      <strong>Compilation output</strong>
+    </header>
+
+    <pre><code>{{ compile_error }}</code></pre>
+  </article>
+  {% else %}
+  <figure>
+    <table role="grid">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Verdict</th>
+          <th scope="col">Score</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for (verdict, score) in last.subtask_report.scores %}
+        <tr>
+          <th scope="row">Subtask {{ loop.index }}</th>
+          <td>{{ verdict }}</td>
+          <td>{{ score }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+      <tfoot>
+        {% set (verdict, score) = last.subtask_report.overall %}
+        <tr>
+          <th scope="col">Overall</th>
+          <td>{{ verdict }}</td>
+          <td>{{ score }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </figure>
+  {% endif %}
+
+  <h6>All submissions</h6>
+  <figure>
+    <table role="grid">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Time</th>
+          <th scope="col">Verdict</th>
+          <th scope="col">Score</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for report in reports %}
+        <tr>
+          <th scope="row">{{ loop.index }}</th>
+          <td>{{ report.datetime }}</td>
+          <td>{{ report.verdict }}</td>
+          <td>{{ report.score }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+      <tfoot>
+        {% set (verdict, score) = overall.unwrap() %}
+        <tr>
+          <th scope="col">#</th>
+          <td>Total of {{ reports.len() }} submissions</td>
+          <td>{{ verdict }}</td>
+          <td>{{ score }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </figure>
+  {% else %}
+  <p><small>No submissions yet</small></p>
+  {% endif %}
+</div>

@@ -1,0 +1,24 @@
+{% if !users.is_empty() %}
+{% for user in users %}
+<tr>
+  <th scope="row">{{ loop.index }}</th>
+  <td>{{ user.username() }}</td>
+  <td>
+    <button hx-post="/admin/users?id={{ user.id() }}&action=delete"
+      hx-confirm="Are you sure you want to delete this user?" hx-target="closest tr" hx-swap="delete">Delete</button>
+  </td>
+</tr>
+{% endfor %}
+
+{% if more %}
+<tr id="load-more">
+  <td colspan="3">
+    <button hx-get="/admin/users?page={{ page + 1 }}" hx-target="#load-more" hx-swap="outerHTML" class="secondary">
+      Load more...
+    </button>
+  </td>
+</tr>
+{% endif %}
+{% else %}
+<p><small>No users</small></p>
+{% endif %}

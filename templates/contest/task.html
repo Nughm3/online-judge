@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.name }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+  integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+  integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block main %}
+<hgroup>
+  <h1>{{ task.name }}</h1>
+  <h6>
+    <a href="/contest/{{ session_id }}">{{ contest_name }}</a>
+    {% if let Some(difficulty) = task.difficulty %}
+    <span>&middot; {{ difficulty }}</span>
+    {% endif %}
+  </h6>
+</hgroup>
+
+<nav>
+  <ul>
+    {% if has_prev %}
+    <a href="/contest/{{ session_id }}/task/{{ task_id - 1 }}">&larr; Previous</a>
+    {% endif %}
+  </ul>
+
+  <ul>
+    <a href="#submit">&darr; Submit</a>
+  </ul>
+
+  <ul>
+    {% if has_next %}
+    <a href="/contest/{{ session_id }}/task/{{ task_id + 1 }}">Next &rarr;</a>
+    {% endif %}
+  </ul>
+</nav>
+
+<hr>
+
+<section id="description">
+  {{ task.page|safe }}
+</section>
+
+<hr>
+
+<section id="details">
+  {% if !task.examples.is_empty() %}
+  <h2>Examples</h2>
+  {% for example in task.examples %}
+  <div class="grid">
+    <div>
+      <h6>Input</h6>
+      <pre><code>{{ example.input|safe }}</code></pre>
+    </div>
+    <div>
+      <h6>Output</h6>
+      <pre><code>{{ example.output|safe }}</code></pre>
+    </div>
+  </div>
+  {% if let Some(comment) = example.comment %}
+  <p><small>{{ comment|safe }}</small></p>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  <h2>Constraints</h2>
+  {% if !task.constraints.is_empty() %}
+  <ul>
+    {% for constraint in task.constraints %}
+    <li>{{ constraint }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% for subtask in task.subtasks %}
+  <h6>Subtask {{ loop.index }}</h6>
+  {% if !subtask.constraints.is_empty() %}
+  <ul>
+    {% for constraint in subtask.constraints %}
+    <li>{{ constraint }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p><small>No additional constraints</small></p>
+  {% endif %}
+  {% endfor %}
+</section>
+
+<hr>
+
+<section id="submit">
+  <h2>Submit</h2>
+  <div hx-get="/contest/{{ session_id }}/submit/{{ task_id }}" hx-trigger="load" hx-swap="outerHTML"></div>
+</section>
+
+<hr>
+
+<nav>
+  <ul>
+    {% if has_prev %}
+    <a href="/contest/{{ session_id }}/task/{{ task_id - 1 }}">&larr; Previous</a>
+    {% endif %}
+  </ul>
+
+  <ul>
+    <a href="#">&uarr; Top</a>
+  </ul>
+
+  <ul>
+    {% if has_next %}
+    <a href="/contest/{{ session_id }}/task/{{ task_id + 1 }}">Next &rarr;</a>
+    {% endif %}
+  </ul>
+</nav>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+      ],
+    });
+  });
+</script>
+{% endblock %}

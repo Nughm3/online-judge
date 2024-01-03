@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Log in{% endblock %}
+
+{% block main %}
+<form action="/login" method="post">
+  <article>
+    <h1>Log in</h1>
+
+    <label for="username">Username</label>
+    <input id="username" type="text" name="username" />
+
+    <label for="password">Password</label>
+    <input id="password" type="password" name="password" />
+    <small>Forgot password? <a href="/resetPassword">Reset password</a></small>
+
+    <p>No account? <a href="/register">Register!</a></p>
+
+    {% if let Some(next) = next %}
+    <input type="hidden" name="next" value="{{ next }}" />
+    {% endif %}
+
+    {% if retry %}
+    <p class="error">Incorrect username or password.</p>
+    {% endif %}
+
+    <footer>
+      <button>Log in</button>
+    </footer>
+  </article>
+</form>
+{% endblock %}

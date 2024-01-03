@@ -1,0 +1,20 @@
+<nav class="navbar">
+  <ul>
+    <li>
+      <a href="/" class="secondary">
+        <img src="/static/gavel.svg" class="logo" />
+        <strong class="title">Online Judge</strong>
+      </a>
+    </li>
+  </ul>
+
+  <ul>
+    {% if let Some(user) = user %}
+    <li>Logged in as <strong>{{ user.username() }}</strong></li>
+    <li><a href="/logout" role="button">Log out</a></li>
+    {% else %}
+    <li><a href="/login" role="button" class="secondary">Log in</a></li>
+    <li><a href="/register" role="button">Register</a></li>
+    {% endif %}
+  </ul>
+</nav>

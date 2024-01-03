@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ contest.name }}{% endblock %}
+
+{% block main %}
+<h1>{{ contest.name }}</h1>
+
+{% if started %}
+<nav>
+  <ul>
+    {% if logged_in %}
+    <a href="#tasks">&darr; Tasks</a>
+    {% else %}
+    <span><a href="/login?next=/contest/{{ session_id }}">Log in</a> to compete</span>
+    {% endif %}
+  </ul>
+
+  <ul>
+    <a href="/contest/{{ session_id }}/leaderboard">&starf; Leaderboard</a>
+  </ul>
+</nav>
+{% endif %}
+
+<hr>
+
+<section id="description">
+  {{ contest.page|safe }}
+</section>
+
+<hr>
+
+{% if started %}
+
+{% if logged_in %}
+<section id="tasks">
+  <h2>Tasks</h2>
+  <ol>
+    {% for task in contest.tasks %}
+    <li><a href="/contest/{{ session_id }}/task/{{ loop.index }}">{{ task.name }}</a></li>
+    {% endfor %}
+  </ol>
+</section>
+{% else %}
+<p><small>You must <a href="/login?next=/contest/{{ session_id }}">log in</a> to compete!</small></p>
+{% endif %}
+
+{% else %}
+<p><small>Contest not started</small></p>
+{% endif %}
+
+{% endblock %}

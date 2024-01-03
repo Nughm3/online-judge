@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Judge Administration{% endblock %}
+
+{% block main %}
+<h1>Judge Administration</h1>
+
+<section id="sessions">
+  <h2>Sessions</h2>
+
+  <figure>
+    <table role="grid">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Name</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody hx-get="/admin/sessions?page=1" hx-trigger="load, reloadSessions from:body">
+      </tbody>
+    </table>
+  </figure>
+</section>
+
+<section id="contests">
+  <h2>Contests</h2>
+
+  <figure>
+    <table role="grid">
+      <thead>
+        <th scope="col">#</th>
+        <th scope="col">Name</th>
+        <th scope="col">Actions</th>
+      </thead>
+
+      <tbody>
+        <tr hx-get="/admin/contests?page=1" hx-trigger="load" hx-swap="outerHTML"></tr>
+      </tbody>
+    </table>
+  </figure>
+</section>
+
+<section id="users">
+  <h2>Users</h2>
+
+  <figure>
+    <table role="grid">
+      <thead>
+        <th scope="col">#</th>
+        <th scope="col">Username</th>
+        <th scope="col">Actions</th>
+      </thead>
+
+      <tbody>
+        <tr hx-get="/admin/users?page=1" hx-trigger="load" hx-swap="outerHTML"></tr>
+      </tbody>
+    </table>
+  </figure>
+</section>
+{% endblock %}

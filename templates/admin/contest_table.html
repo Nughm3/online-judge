@@ -1,0 +1,21 @@
+{% if !contests.is_empty() %}
+{% for contest in contests %}
+<tr>
+  <th scope="row">{{ loop.index }}</th>
+  <td>{{ contest.name }}</td>
+  <td><button hx-post="/admin/contests?idx={{ loop.index }}" hx-swap="outerHTML">Create Session</button></td>
+</tr>
+{% endfor %}
+
+{% if more %}
+<tr id="load-more">
+  <td colspan="3">
+    <button hx-get="/admin/contests?page={{ page + 1 }}" hx-target="#load-more" hx-swap="outerHTML" class="secondary">
+      Load more...
+    </button>
+  </td>
+</tr>
+{% endif %}
+{% else %}
+<p><small>No contests</small></p>
+{% endif %}

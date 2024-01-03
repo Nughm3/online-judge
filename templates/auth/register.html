@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block main %}
+<form action="/register" method="post">
+  <article>
+    <h1>Register</h1>
+
+    <label for="username">Username</label>
+    <input id="username" type="text" name="username" />
+
+    <label for="password">Password</label>
+    <input id="password" type="password" name="password" />
+
+    <label for="confirm">Confirm password</label>
+    <input id="confirm" type="password" name="confirm" />
+
+    <p>Have an account already? <a href="/login">Log in!</a></p>
+
+    {% if let Some(next) = next %}
+    <input type="hidden" name="next" value="{{ next }}" />
+    {% endif %}
+
+    {% if let Some(error) = error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <footer>
+      <button>Register</button>
+    </footer>
+  </article>
+</form>
+{% endblock %}

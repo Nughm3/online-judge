@@ -1,0 +1,22 @@
+{% if !rankings.is_empty() %}
+{% for (username, _id, score) in rankings %}
+<tr>
+  <th scope="row">{{ loop.index }}</th>
+  <td>{{ username }}</td>
+  <td>{{ score }}</td>
+</tr>
+{% endfor %}
+
+{% if more %}
+<tr id="load-more">
+  <td colspan="3">
+    <button hx-get="/contests/{{ session_id }}/leaderboard_table?page={{ page + 1 }}" hx-target="#load-more"
+      hx-swap="outerHTML" class="secondary">
+      Load more...
+    </button>
+  </td>
+</tr>
+{% endif %}
+{% else %}
+<p><small>No rankings</small></p>
+{% endif %}

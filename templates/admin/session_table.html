@@ -1,0 +1,31 @@
+{% if !sessions.is_empty() %}
+{% for session in sessions %}
+<tr>
+  <th scope="row">{{ loop.index }}</th>
+  <td><a href="/contest/{{ session.id }}">{{ session.contest.name }}</a></td>
+  {% if session.start.is_none() && session.end.is_none() %}
+  <td>
+    <button hx-post="/admin/sessions?id={{ session.id }}&action=start" hx-swap="outerHTML">Start</button>
+  </td>
+  {% else if session.end.is_none() %}
+  <td>
+    <button hx-post="/admin/sessions?id={{ session.id }}&action=end" hx-swap="outerHTML">End</button>
+  </td>
+  {% else %}
+  <td>N/A</td>
+  {% endif %}
+</tr>
+{% endfor %}
+
+{% if more %}
+<tr id="load-more">
+  <td colspan="3">
+    <button hx-get="/admin/sessions?page={{ page + 1 }}" hx-target="#load-more" hx-swap="outerHTML" class="secondary">
+      Load more...
+    </button>
+  </td>
+</tr>
+{% endif %}
+{% else %}
+<p><small>No active sessions</small></p>
+{% endif %}
