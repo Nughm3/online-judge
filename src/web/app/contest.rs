@@ -429,7 +429,7 @@ async fn submit(
             let rusage = test.resource_usage;
             let memory = rusage.map(|rusage| rusage.memory_bytes as i64);
             let time = rusage.map(|rusage| {
-                let duration = rusage.user_time + rusage.sys_time;
+                let duration = rusage.total_time();
                 (duration.whole_milliseconds() as i64) + (duration.subsec_milliseconds() as i64)
             });
 
