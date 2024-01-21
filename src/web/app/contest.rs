@@ -140,7 +140,7 @@ async fn leaderboard_table(
          FROM (
            SELECT submissions.user_id, submissions.task, MAX(submissions.score) AS max_score
            FROM submissions
-           WHERE session_id = ?
+           WHERE submissions.session_id = ?
            GROUP BY submissions.user_id, submissions.task
          ) subquery
          JOIN users ON subquery.user_id = users.id
@@ -349,11 +349,18 @@ async fn submit(
         .map(|user| user.id())
         .ok_or(AppError::StatusCode(StatusCode::UNAUTHORIZED))?;
 
-    let datetime = OffsetDateTime::now_utc();
-
-    let contest = get_contest(app.clone(), session_id)
+    let session = get_session(app.clone(), session_id)
         .await
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
+
+    if session.end.is_some() {
+        return Ok(Redirect::to(&format!(
+            "/contest/{session_id}/submit/{task_id}"
+        )));
+    }
+
+    let datetime = OffsetDateTime::now_utc();
+    let contest = session.contest;
 
     tracing::trace!("received submission from user (ID: {user_id}) for task {task_id} of contest session {session_id}");
 

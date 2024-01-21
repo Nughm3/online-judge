@@ -13,6 +13,10 @@
   integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
 {% endblock %}
 
+{% block nav %}
+<div hx-get="/navbar?session_id={{ session_id }}" hx-trigger="load" hx-swap="outerHTML"></div>
+{% endblock %}
+
 {% block main %}
 <hgroup>
   <h1>{{ task.name }}</h1>

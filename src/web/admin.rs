@@ -22,7 +22,7 @@ use crate::contest::Contest;
 
 pub fn router(app: Arc<App>) -> Router {
     Router::new()
-        .route("/admin", get(admin))
+        .route("/admin", get(|| async { AdminPage }))
         .route("/admin/sessions", get(session_table).post(sessions_action))
         .route(
             "/admin/contests",
@@ -36,10 +36,6 @@ pub fn router(app: Arc<App>) -> Router {
 #[derive(Template)]
 #[template(path = "admin/admin.html")]
 struct AdminPage;
-
-async fn admin() -> AdminPage {
-    AdminPage
-}
 
 #[derive(Template)]
 #[template(path = "admin/session_table.html")]
@@ -172,6 +168,7 @@ async fn contest_create_session(
 #[template(path = "admin/user_table.html")]
 struct UserTable {
     page: usize,
+    admins: Vec<i64>,
     users: Vec<User>,
     more: bool,
 }
@@ -181,6 +178,12 @@ async fn user_table(
     Query(Pagination { page }): Query<Pagination>,
 ) -> AppResult<UserTable> {
     let offset = 10 * (page - 1) as i64;
+
+    let admins = sqlx::query!("SELECT id FROM admins;")
+        .fetch(app.db.pool())
+        .map(|res| res.map(|record| record.id))
+        .collect::<Result<_, _>>()
+        .await?;
 
     let users = sqlx::query!("SELECT * FROM users LIMIT 10 OFFSET ?;", offset)
         .fetch(app.db.pool())
@@ -195,6 +198,7 @@ async fn user_table(
 
     Ok(UserTable {
         page,
+        admins,
         users,
         more: count > page * 10,
     })

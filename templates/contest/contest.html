@@ -2,6 +2,10 @@
 
 {% block title %}{{ contest.name }}{% endblock %}
 
+{% block nav %}
+<div hx-get="/navbar?session_id={{ session_id }}" hx-trigger="load" hx-swap="outerHTML"></div>
+{% endblock %}
+
 {% block main %}
 <h1>{{ contest.name }}</h1>
 

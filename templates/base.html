@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{% endblock %}</title>
 
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/static/favicon.ico" type="image/vnd.microsoft.icon" />
+
   <link rel="stylesheet" type="text/css" href="/static/style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1.5/css/pico.min.css" />
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -15,7 +18,9 @@
 </head>
 
 <body>
+  {% block nav %}
   <div hx-get="/navbar" hx-trigger="load" hx-swap="outerHTML"></div>
+  {% endblock %}
 
   <main class="container">
     {% block main %}
