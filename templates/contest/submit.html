@@ -7,7 +7,11 @@
 
       <select id="language" name="language">
         {% for language in languages %}
+        {% if preferred_language.is_some() && language == preferred_language.as_ref().unwrap() %}
+        <option selected>{{ language }}</option>
+        {% else %}
         <option>{{ language }}</option>
+        {% endif %}
         {% endfor %}
       </select>
     </div>

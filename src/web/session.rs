@@ -9,7 +9,7 @@ use super::{database::Database, Contest};
 pub struct Session {
     pub id: i64,
     pub contest: Arc<Contest>,
-    pub user_cooldowns: HashMap<i64, OffsetDateTime>,
+    pub user_cooldowns: HashMap<(i64, i64), OffsetDateTime>,
     pub start: Option<OffsetDateTime>,
     pub end: Option<OffsetDateTime>,
 }

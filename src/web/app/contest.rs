@@ -14,6 +14,7 @@ use axum_typed_multipart::TypedMultipart;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tokio_stream::StreamExt;
+use tower_cookies::{Cookie, Cookies};
 
 use super::{App, Pagination};
 use crate::{
@@ -25,6 +26,8 @@ use crate::{
         session::Session,
     },
 };
+
+const LANGUAGE_COOKIE: &str = "language";
 
 pub fn router(app: Arc<App>) -> Router<Arc<App>> {
     async fn ensure_contest_started(
@@ -222,6 +225,7 @@ struct SubmitPage {
     accepting_submissions: bool,
     cooldown: Option<i64>,
     languages: Vec<String>,
+    preferred_language: Option<String>,
 
     // Submission results
     reports: Vec<TaskReport>,
@@ -244,6 +248,7 @@ struct SubtaskReport {
 
 async fn submissions(
     auth_session: AuthSession,
+    cookies: Cookies,
     State(app): State<Arc<App>>,
     Path(ContestNavigation {
         session_id,
@@ -261,11 +266,14 @@ async fn submissions(
 
     let accepting_submissions = session.start.is_some() && session.end.is_none();
 
-    let cooldown = session.user_cooldowns.get(&user_id).and_then(|cooldown| {
-        let elapsed = OffsetDateTime::now_utc() - *cooldown;
-        let contest_cooldown = session.contest.cooldown;
-        (elapsed < contest_cooldown).then_some((contest_cooldown - elapsed).whole_seconds())
-    });
+    let cooldown = session
+        .user_cooldowns
+        .get(&(user_id, task_id))
+        .and_then(|cooldown| {
+            let elapsed = OffsetDateTime::now_utc() - *cooldown;
+            let contest_cooldown = session.contest.cooldown;
+            (elapsed < contest_cooldown).then_some((contest_cooldown - elapsed).whole_seconds())
+        });
 
     let languages = session.contest.languages.clone().unwrap_or_else(|| {
         app.judge_config
@@ -274,6 +282,10 @@ async fn submissions(
             .map(|language| language.name.clone())
             .collect()
     });
+
+    let preferred_language = cookies
+        .get(LANGUAGE_COOKIE)
+        .map(|cookie| cookie.value().to_owned());
 
     let mut reports: Vec<_> = sqlx::query!(
         "SELECT * FROM submissions WHERE user_id = ? AND session_id = ? AND task = ?;",
@@ -335,6 +347,7 @@ async fn submissions(
         accepting_submissions,
         cooldown,
         languages,
+        preferred_language,
         reports,
         overall,
     })
@@ -343,6 +356,7 @@ async fn submissions(
 #[tracing::instrument(skip(auth_session, app))]
 async fn submit(
     auth_session: AuthSession,
+    cookies: Cookies,
     State(app): State<Arc<App>>,
     Path(ContestNavigation {
         session_id,
@@ -368,7 +382,7 @@ async fn submit(
             return Ok(Redirect::to(&redirect_url));
         }
 
-        if let Some(previous) = session.user_cooldowns.get(&user_id) {
+        if let Some(previous) = session.user_cooldowns.get(&(user_id, task_id)) {
             if now - *previous < session.contest.cooldown {
                 tracing::trace!("user (ID: {user_id}) attempted to submit but was on cooldown");
                 return Ok(Redirect::to(&redirect_url));
@@ -466,13 +480,15 @@ async fn submit(
         }
     }
 
+    cookies.add(Cookie::new(LANGUAGE_COOKIE, submission.language));
+
     app.sessions
         .write()
         .await
         .get_mut(&session_id)
         .unwrap()
         .user_cooldowns
-        .insert(user_id, OffsetDateTime::now_utc());
+        .insert((user_id, task_id), OffsetDateTime::now_utc());
 
     tracing::trace!("submission successfully judged and recorded");
 
