@@ -25,6 +25,7 @@ struct ContestFrontmatter {
     task_paths: Vec<String>,
     languages: Option<Vec<String>>,
     duration: Duration,
+    cooldown: Duration,
     rlimits: ContestResourceLimits,
 }
 
@@ -59,6 +60,7 @@ impl Contest {
             tasks,
             languages: frontmatter.languages,
             duration: frontmatter.duration,
+            cooldown: frontmatter.cooldown,
             rlimits: frontmatter.rlimits,
         })
     }

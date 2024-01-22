@@ -17,6 +17,7 @@ pub struct Contest {
     pub tasks: Vec<Task>,
     pub languages: Option<Vec<String>>,
     pub duration: Duration,
+    pub cooldown: Duration,
     pub rlimits: ContestResourceLimits,
 }
 

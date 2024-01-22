@@ -259,7 +259,6 @@ async fn submissions(
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
     let contest = session.contest;
-
     let accepting_submissions = session.start.is_some() && session.end.is_none();
 
     let languages = contest.languages.unwrap_or_else(|| {
@@ -353,10 +352,10 @@ async fn submit(
         .await
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
+    let redirect_url = format!("/contest/{session_id}/submit/{task_id}");
+
     if session.end.is_some() {
-        return Ok(Redirect::to(&format!(
-            "/contest/{session_id}/submit/{task_id}"
-        )));
+        return Ok(Redirect::to(&redirect_url));
     }
 
     let datetime = OffsetDateTime::now_utc();
@@ -455,7 +454,5 @@ async fn submit(
 
     tracing::trace!("submission successfully judged and recorded");
 
-    Ok(Redirect::to(&format!(
-        "/contest/{session_id}/submit/{task_id}"
-    )))
+    Ok(Redirect::to(&redirect_url))
 }

@@ -25,8 +25,8 @@ serde_yaml = "0.9.29"
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite", "time"] }
 tempfile = "3.8.1"
 thiserror = "1.0.51"
-time = { version = "0.3.31", features = ["serde-human-readable", "local-offset"] }
-tokio = { version = "1.35.1", features = ["full"] }
+time = { version = "0.3.31", features = ["serde-human-readable", "local-offset", "parsing"] }
+tokio = { version = "1.35.1", features = ["macros", "net", "parking_lot", "rt-multi-thread", "sync", "time"] }
 tokio-stream = { version = "0.1.14", features = ["full"] }
 toml = "0.8.8"
 tower = "0.4.13"

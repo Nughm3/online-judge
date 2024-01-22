@@ -1,14 +1,10 @@
-ARG RUST_VERSION=1.75.0
-ARG ALPINE_VERSION=3.18
-
 # Build
-FROM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS build
+FROM rust:alpine AS build
 ENV APP_NAME=online-judge
 
 # Install build dependencies
 RUN apk update && apk upgrade
 RUN apk add --no-cache musl-dev sqlite
-RUN cargo install sqlx-cli --no-default-features --features sqlite
 
 WORKDIR /usr/src
 RUN cargo new ${APP_NAME}
@@ -22,13 +18,17 @@ RUN cargo build --release
 RUN rm src/*.rs
 
 # Build binary
-COPY . .
+COPY build.rs judge.toml .
+COPY judge.template.db ./judge.db
+COPY migrations ./migrations
+COPY src ./src
+COPY static ./static
+COPY templates ./templates
 ENV DATABASE_URL=sqlite:///usr/src/${APP_NAME}/judge.db
-RUN sqlx database setup
 RUN cargo build --release
 
 # Run
-FROM alpine:${ALPINE_VERSION}
+FROM alpine:latest
 
 ENV APP_NAME=online-judge
 ENV BUILD_DIR=/usr/src/${APP_NAME}

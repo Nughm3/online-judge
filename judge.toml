@@ -1,0 +1,10 @@
+[[language]]
+name = "C++ 17"
+filename = "submission.cpp"
+build = "g++ submission.cpp -std=c++17 -Wall -O3 -o submission"
+run = "./submission"
+
+[[language]]
+name = "Python 3"
+filename = "submission.py"
+run = "python3 ./submission.py"

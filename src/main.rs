@@ -44,19 +44,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
-// fn testing() -> Result<()> {
-//     use online_judge::*;
-//     let config = std::fs::read_to_string("judge.toml")?;
-//     let config = toml::from_str(&config)?;
-//     let contest = contest::Contest::load("/home/isaac/judge-data/contests/CSES")?;
-//     let task = &contest.tasks[0];
-//     let code = include_str!("../test.cpp").to_string();
-//     let submission = judge::Submission {
-//         code,
-//         language: "C++ 17".into(),
-//     };
-//     let result = judge::run(&config, submission, &task, contest.rlimits)?;
-//     tracing::info!("{result:#?}");
-//     Ok(())
-// }
