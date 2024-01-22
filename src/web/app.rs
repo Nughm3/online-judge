@@ -2,23 +2,31 @@ use std::{collections::HashMap, sync::Arc};
 
 use askama::Template;
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
+    middleware::map_response_with_state,
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
+use axum_login::{login_required, AuthzBackend};
 use serde::Deserialize;
 use time::macros::format_description;
 use tokio::sync::RwLock;
 
+use self::{contest::*, leaderboard::*, submit::*}; // TODO: remove
 use super::{
-    auth::{AuthSession, User},
+    auth::{AuthSession, Backend, Permissions, User},
     database::Database,
     session::Session,
 };
 use crate::contest::*;
 
 mod contest;
+mod leaderboard;
+mod submit;
+
+const LANGUAGE_COOKIE: &str = "preferred-language";
 
 #[derive(Debug)]
 pub struct App {
@@ -29,11 +37,55 @@ pub struct App {
 }
 
 pub fn router(app: Arc<App>) -> Router {
+    let router = {
+        async fn ensure_contest_started(
+            auth_session: AuthSession,
+            State(app): State<Arc<App>>,
+            Path(params): Path<HashMap<String, String>>,
+            response: Response,
+        ) -> Response {
+            if let Some(Ok(session_id)) = params.get("session_id").map(|s| s.parse()) {
+                if let Some(session) = app.sessions.read().await.get(&session_id) {
+                    let admin = if let Some(user) = auth_session.user {
+                        auth_session
+                            .backend
+                            .has_perm(&user, Permissions::ADMIN)
+                            .await
+                            .unwrap_or_default()
+                    } else {
+                        false
+                    };
+
+                    if session.start.is_some() || admin {
+                        return response;
+                    }
+                }
+            }
+
+            StatusCode::NOT_FOUND.into_response()
+        }
+
+        Router::new()
+            .route("/submit/:task_id", get(submissions).post(submit))
+            .route("/task/:task_id", get(task))
+            .route_layer(login_required!(Backend, login_url = "/login"))
+            .route("/leaderboard", get(leaderboard))
+            .route("/leaderboard_table", get(leaderboard_table))
+            .route_layer(map_response_with_state(app.clone(), ensure_contest_started))
+            .route("/", get(contest))
+    };
+
     Router::new()
-        .nest("/contest/:session_id", contest::router(app.clone()))
+        .nest("/contest/:session_id", router)
         .route("/", get(index))
         .route("/navbar", get(navbar))
         .with_state(app)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ContestNavigation {
+    session_id: i64,
+    task_id: i64,
 }
 
 #[derive(Debug, Deserialize)]

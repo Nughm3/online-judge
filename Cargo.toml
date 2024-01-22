@@ -40,3 +40,7 @@ yansi = "0.5.1"
 [profile.dev.package]
 backtrace.opt-level = 3
 sqlx-macros.opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = true

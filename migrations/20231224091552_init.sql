@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS submissions (
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS subtask_scores (
+CREATE TABLE IF NOT EXISTS subtasks (
     id             INTEGER PRIMARY KEY NOT NULL,
     submission_id  INTEGER NOT NULL,
     subtask        INTEGER NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS subtask_scores (
     FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS test_scores (
+CREATE TABLE IF NOT EXISTS tests (
     id          INTEGER PRIMARY KEY NOT NULL,
     subtask_id  INTEGER NOT NULL,
     test        INTEGER NOT NULL,
@@ -50,5 +50,5 @@ CREATE TABLE IF NOT EXISTS test_scores (
     time        INTEGER,
     verdict     TEXT NOT NULL,
     score       INTEGER NOT NULL,
-    FOREIGN KEY (subtask_id) REFERENCES subtask_scores(id) ON DELETE CASCADE
+    FOREIGN KEY (subtask_id) REFERENCES subtasks(id) ON DELETE CASCADE
 );
