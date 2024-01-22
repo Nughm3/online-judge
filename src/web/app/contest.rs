@@ -34,7 +34,7 @@ pub fn router(app: Arc<App>) -> Router<Arc<App>> {
         response: Response,
     ) -> Response {
         if let Some(Ok(session_id)) = params.get("session_id").map(|s| s.parse()) {
-            if let Some(session) = app.sessions.lock().await.get(&session_id) {
+            if let Some(session) = app.sessions.read().await.get(&session_id) {
                 let admin = if let Some(user) = auth_session.user {
                     auth_session
                         .backend
@@ -65,10 +65,10 @@ pub fn router(app: Arc<App>) -> Router<Arc<App>> {
 }
 
 async fn get_session(app: Arc<App>, id: i64) -> Option<Session> {
-    app.sessions.lock().await.get(&id).cloned()
+    app.sessions.read().await.get(&id).cloned()
 }
 
-async fn get_contest(app: Arc<App>, id: i64) -> Option<Contest> {
+async fn get_contest(app: Arc<App>, id: i64) -> Option<Arc<Contest>> {
     get_session(app, id).await.map(|session| session.contest)
 }
 
@@ -76,7 +76,7 @@ async fn get_contest(app: Arc<App>, id: i64) -> Option<Contest> {
 #[template(path = "contest/contest.html")]
 struct ContestPage {
     session_id: i64,
-    contest: Contest,
+    contest: Arc<Contest>,
     started: bool,
     logged_in: bool,
 }
@@ -114,7 +114,7 @@ async fn leaderboard(
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
     Ok(Leaderboard {
-        contest_name: contest.name,
+        contest_name: contest.name.clone(),
         session_id,
     })
 }
@@ -204,7 +204,7 @@ async fn task(
 
     Ok(TaskPage {
         session_id,
-        contest_name: contest.name,
+        contest_name: contest.name.clone(),
         task_id,
         has_prev: task_id > 1,
         has_next: task_id < contest.tasks.len() as i64,
@@ -220,6 +220,7 @@ struct SubmitPage {
 
     // Submission form
     accepting_submissions: bool,
+    cooldown: Option<i64>,
     languages: Vec<String>,
 
     // Submission results
@@ -258,10 +259,15 @@ async fn submissions(
         .await
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
-    let contest = session.contest;
     let accepting_submissions = session.start.is_some() && session.end.is_none();
 
-    let languages = contest.languages.unwrap_or_else(|| {
+    let cooldown = session.user_cooldowns.get(&user_id).and_then(|cooldown| {
+        let elapsed = OffsetDateTime::now_utc() - *cooldown;
+        let contest_cooldown = session.contest.cooldown;
+        (elapsed < contest_cooldown).then_some((contest_cooldown - elapsed).whole_seconds())
+    });
+
+    let languages = session.contest.languages.clone().unwrap_or_else(|| {
         app.judge_config
             .languages
             .iter()
@@ -327,6 +333,7 @@ async fn submissions(
         session_id,
         task_id,
         accepting_submissions,
+        cooldown,
         languages,
         reports,
         overall,
@@ -348,25 +355,32 @@ async fn submit(
         .map(|user| user.id())
         .ok_or(AppError::StatusCode(StatusCode::UNAUTHORIZED))?;
 
-    let session = get_session(app.clone(), session_id)
-        .await
-        .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
-
     let redirect_url = format!("/contest/{session_id}/submit/{task_id}");
 
-    if session.end.is_some() {
-        return Ok(Redirect::to(&redirect_url));
-    }
-
-    let datetime = OffsetDateTime::now_utc();
-    let contest = session.contest;
-
-    tracing::trace!("received submission from user (ID: {user_id}) for task {task_id} of contest session {session_id}");
+    let now = OffsetDateTime::now_utc();
 
     let judge_result = {
+        let session = get_session(app.clone(), session_id)
+            .await
+            .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
+
+        if session.end.is_some() {
+            return Ok(Redirect::to(&redirect_url));
+        }
+
+        if let Some(previous) = session.user_cooldowns.get(&user_id) {
+            if now - *previous < session.contest.cooldown {
+                tracing::trace!("user (ID: {user_id}) attempted to submit but was on cooldown");
+                return Ok(Redirect::to(&redirect_url));
+            }
+        }
+
+        tracing::trace!("received submission from user (ID: {user_id}) for task {task_id} of contest session {session_id}");
+
         let config = app.judge_config.clone();
         let submission = submission.clone();
-        let task = contest
+        let task = session
+            .contest
             .tasks
             .get(task_id as usize - 1)
             .cloned()
@@ -375,7 +389,7 @@ async fn submit(
         tokio::task::spawn_blocking(move || {
             use crate::judge;
 
-            let verdicts = judge::run(&config, submission, &task, contest.rlimits)?;
+            let verdicts = judge::run(&config, submission, &task, session.contest.rlimits)?;
             let grade = judge::grade(&task, &verdicts);
 
             Ok::<_, JudgeError>(grade)
@@ -404,7 +418,7 @@ async fn submit(
         user_id,
         session_id,
         task_id,
-        datetime,
+        now,
         submission.code,
         submission.language,
         verdict,
@@ -451,6 +465,14 @@ async fn submit(
             .execute(app.db.pool()).await?;
         }
     }
+
+    app.sessions
+        .write()
+        .await
+        .get_mut(&session_id)
+        .unwrap()
+        .user_cooldowns
+        .insert(user_id, OffsetDateTime::now_utc());
 
     tracing::trace!("submission successfully judged and recorded");
 

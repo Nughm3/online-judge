@@ -10,10 +10,12 @@
 
   <ul>
     {% if let Some(info) = contest_info %}
-    <a href="/contests/{{ info.session_id }}" class="secondary">{{ info.name }}</a>
-    {% if info.end.is_some() %}
-    <strong>&nbsp;<span id="time-left"></span></strong>
-    {% endif %}
+    <a href="/contest/{{ info.session_id }}" class="secondary">
+      {{ info.name }}
+      {% if info.end.is_some() %}
+      <strong>&nbsp;<span id="time-left"></span></strong>
+      {% endif %}
+    </a>
     {% endif %}
   </ul>
 

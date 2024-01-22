@@ -5,7 +5,7 @@ use axum_login::{
     tower_sessions::{MemoryStore, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
-use tokio::{fs, net::TcpListener, sync::Mutex};
+use tokio::{fs, net::TcpListener, sync::RwLock};
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
@@ -54,7 +54,7 @@ pub async fn serve(config: Config) -> error::AppResult<()> {
     let mut contests = Vec::new();
     while let Some(entry) = contest_paths.next_entry().await? {
         let contest = tokio::task::spawn_blocking(move || Contest::load(entry.path())).await??;
-        contests.push(contest);
+        contests.push(Arc::new(contest));
     }
     tracing::debug!("loaded {} contests", contests.len());
 
@@ -70,7 +70,7 @@ pub async fn serve(config: Config) -> error::AppResult<()> {
     let state = Arc::new(app::App {
         db,
         contests,
-        sessions: Mutex::new(HashMap::new()),
+        sessions: RwLock::new(HashMap::new()),
         judge_config,
     });
 
@@ -85,7 +85,7 @@ pub async fn serve(config: Config) -> error::AppResult<()> {
         );
 
     let listener = TcpListener::bind(&config.server_address).await?;
-    tracing::info!("listening on {}", config.server_address);
+    tracing::info!("listening on http://{}", config.server_address);
 
     axum::serve(listener, app).await?;
 

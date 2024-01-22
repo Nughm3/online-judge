@@ -1,7 +1,7 @@
 <div id="submission-container">
   {% if accepting_submissions %}
-  <form hx-post="/contest/{{ session_id }}/submit/{{ task_id }}" hx-encoding="multipart/form-data"
-    hx-target="#submission-container">
+  <form hx-boost hx-post="/contest/{{ session_id }}/submit/{{ task_id }}" hx-encoding="multipart/form-data"
+    hx-target="#submission-container" hx-indicator="#progress">
     <div class="grid">
       <input id="code" type="file" name="code" />
 
@@ -12,7 +12,15 @@
       </select>
     </div>
 
+    {% if let Some(cooldown) = cooldown %}
+    <button id="cooldown" disabled=true data-tooltip="Please wait a bit before submitting again!">
+      {{ cooldown }}s
+    </button>
+    {% else %}
     <button>Submit</button>
+
+    <progress id="progress" class="htmx-indicator"></progress>
+    {% endif %}
   </form>
   {% else %}
   <p><small>This task is no longer accepting submissions.</small></p>
@@ -101,5 +109,24 @@
   </figure>
   {% else %}
   <p><small>No submissions yet</small></p>
+  {% endif %}
+
+  {% if let Some(cooldown) = cooldown %}
+  <script>
+    (() => {
+      let cooldown = parseInt("{{ cooldown }}") - 1;
+      const elem = document.getElementById("cooldown");
+
+      const intervalId = setInterval(() => {
+        if (cooldown > 0) {
+          elem.innerHTML = `${cooldown}s`;
+          cooldown--;
+        } else {
+          elem.outerHTML = "<button>Submit</button>";
+          clearInterval(intervalId);
+        }
+      }, 1000);
+    })();
+  </script>
   {% endif %}
 </div>

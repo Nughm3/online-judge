@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -6,7 +8,8 @@ use super::{database::Database, Contest};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Session {
     pub id: i64,
-    pub contest: Contest,
+    pub contest: Arc<Contest>,
+    pub user_cooldowns: HashMap<i64, OffsetDateTime>,
     pub start: Option<OffsetDateTime>,
     pub end: Option<OffsetDateTime>,
 }
@@ -22,7 +25,7 @@ pub enum SessionError {
 }
 
 impl Session {
-    pub async fn new(db: &Database, contest: Contest) -> SessionResult<Self> {
+    pub async fn new(db: &Database, contest: Arc<Contest>) -> SessionResult<Self> {
         let contest_name = contest.name.clone();
         let contest_path = contest.path.display().to_string();
 
@@ -38,6 +41,7 @@ impl Session {
         Ok(Session {
             id,
             contest,
+            user_cooldowns: HashMap::new(),
             start: None,
             end: None,
         })

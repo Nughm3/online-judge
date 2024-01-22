@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::Deserialize;
 use time::macros::format_description;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use super::{
     auth::{AuthSession, User},
@@ -23,8 +23,8 @@ mod contest;
 #[derive(Debug)]
 pub struct App {
     pub db: Database,
-    pub contests: Vec<Contest>,
-    pub sessions: Mutex<HashMap<i64, Session>>,
+    pub contests: Vec<Arc<Contest>>,
+    pub sessions: RwLock<HashMap<i64, Session>>,
     pub judge_config: crate::judge::Config,
 }
 
@@ -51,7 +51,7 @@ async fn index(State(app): State<Arc<App>>) -> IndexPage {
     IndexPage {
         sessions: app
             .sessions
-            .lock()
+            .read()
             .await
             .values()
             .filter(|session| session.end.is_none())
@@ -84,7 +84,7 @@ async fn navbar(
     session: Option<Query<NavbarQuery>>,
 ) -> Result<Navbar, StatusCode> {
     let contest_info = if let Some(Query(NavbarQuery { session_id })) = session {
-        let sessions = &app.sessions.lock().await;
+        let sessions = &app.sessions.read().await;
         let session = sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
         Some(ContestInfo {
             session_id,

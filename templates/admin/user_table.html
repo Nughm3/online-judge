@@ -2,7 +2,7 @@
 {% for user in users %}
 {% set user_id = user.id()|as_ref %}
 <tr>
-  <th scope="row">{{ loop.index }}</th>
+  <th scope="row">{{ loop.index + (page - 1) * 10 }}</th>
   <td>{{ user.username() }}</td>
   <td>
     {% if admins.contains(user_id) %}

@@ -1,9 +1,10 @@
 {% if !contests.is_empty() %}
 {% for contest in contests %}
+{% set index = loop.index + (page - 1) * 10 %}
 <tr>
-  <th scope="row">{{ loop.index }}</th>
+  <th scope="row">{{ index }}</th>
   <td>{{ contest.name }}</td>
-  <td><button hx-post="/admin/contests?idx={{ loop.index }}" hx-swap="outerHTML">Create Session</button></td>
+  <td><button hx-post="/admin/contests?idx={{ index }}" hx-swap="outerHTML">Create Session</button></td>
 </tr>
 {% endfor %}
 

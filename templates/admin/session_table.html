@@ -1,7 +1,7 @@
 {% if !sessions.is_empty() %}
 {% for session in sessions %}
 <tr>
-  <th scope="row">{{ loop.index }}</th>
+  <th scope="row">{{ loop.index + (page - 1) * 10 }}</th>
   <td><a href="/contest/{{ session.id }}">{{ session.contest.name }}</a></td>
   {% if session.start.is_none() && session.end.is_none() %}
   <td>

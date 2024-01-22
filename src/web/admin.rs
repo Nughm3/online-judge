@@ -49,7 +49,7 @@ async fn session_table(
     State(app): State<Arc<App>>,
     Query(Pagination { page }): Query<Pagination>,
 ) -> SessionTable {
-    let sessions = &app.sessions.lock().await;
+    let sessions = &app.sessions.read().await;
 
     SessionTable {
         page,
@@ -89,7 +89,7 @@ async fn sessions_action(
     Query(query): Query<SessionQuery>,
 ) -> AppResult<SessionControl> {
     let app = app.clone();
-    let sessions = &mut app.sessions.lock().await;
+    let sessions = &mut app.sessions.write().await;
     let session = sessions
         .get_mut(&query.id)
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
@@ -103,7 +103,7 @@ async fn sessions_action(
                     tokio::time::sleep(duration.try_into().expect("invalid contest duration"))
                         .await;
 
-                    let sessions = &mut app.sessions.lock().await;
+                    let sessions = &mut app.sessions.write().await;
                     let session = sessions.get_mut(&query.id).unwrap();
 
                     session.end(&app.db).await.ok();
@@ -126,7 +126,7 @@ async fn sessions_action(
 #[template(path = "admin/contest_table.html")]
 struct ContestTable {
     page: usize,
-    contests: Vec<Contest>,
+    contests: Vec<Arc<Contest>>,
     more: bool,
 }
 
@@ -158,7 +158,7 @@ async fn contest_create_session(
 ) -> AppResult<Response> {
     let contest = app.contests[idx - 1].clone();
     let session = Session::new(&app.db, contest).await?;
-    app.sessions.lock().await.insert(session.id, session);
+    app.sessions.write().await.insert(session.id, session);
     Ok(Response::builder()
         .header("HX-Trigger", "reloadSessions")
         .body("Contest session created".into())?)
