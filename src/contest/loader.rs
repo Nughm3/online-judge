@@ -25,7 +25,10 @@ struct ContestFrontmatter {
     task_paths: Vec<String>,
     languages: Option<Vec<String>>,
     duration: Duration,
+    #[serde(default = "defaults::cooldown")]
     cooldown: Duration,
+    #[serde(default = "defaults::leaderboard_size")]
+    leaderboard_size: usize,
     rlimits: ContestResourceLimits,
 }
 
@@ -61,6 +64,7 @@ impl Contest {
             languages: frontmatter.languages,
             duration: frontmatter.duration,
             cooldown: frontmatter.cooldown,
+            leaderboard_size: frontmatter.leaderboard_size,
             rlimits: frontmatter.rlimits,
         })
     }
@@ -75,6 +79,7 @@ struct TaskFrontmatter {
     subtasks: Vec<Subtask>,
     #[serde(default)]
     constraints: Vec<String>,
+    #[serde(default)]
     difficulty: Option<Difficulty>,
 }
 
@@ -158,4 +163,16 @@ fn parse_markdown(input: &str) -> String {
 
     pulldown_cmark::html::push_html(&mut html, parser);
     html
+}
+
+mod defaults {
+    use time::Duration;
+
+    pub fn cooldown() -> Duration {
+        Duration::hours(1)
+    }
+
+    pub fn leaderboard_size() -> usize {
+        100
+    }
 }

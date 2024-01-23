@@ -23,18 +23,13 @@ pub async fn contest(
     State(app): State<Arc<App>>,
     Path(session_id): Path<i64>,
 ) -> Result<ContestPage, StatusCode> {
-    let session = app
-        .clone()
-        .sessions
-        .read()
-        .await
-        .get(&session_id)
-        .cloned()
-        .ok_or(StatusCode::NOT_FOUND)?;
+    let app = app.clone();
+    let sessions = app.sessions.read().await;
+    let session = sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(ContestPage {
         session_id,
-        contest: session.contest,
+        contest: session.contest.clone(),
         started: session.start.is_some(),
         logged_in: auth_session.user.is_some(),
     })
@@ -58,13 +53,10 @@ pub async fn task(
         task_id,
     }): Path<ContestNavigation>,
 ) -> Result<TaskPage, StatusCode> {
-    let contest = app
-        .sessions
-        .read()
-        .await
+    let sessions = &app.sessions.read().await;
+    let contest = sessions
         .get(&session_id)
-        .cloned()
-        .map(|session| session.contest)
+        .map(|session| session.contest.clone())
         .ok_or(StatusCode::NOT_FOUND)?;
 
     let task = contest

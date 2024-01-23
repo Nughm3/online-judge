@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use askama::Template;
 use axum::{
@@ -26,10 +26,17 @@ pub async fn leaderboard(
         .read()
         .await
         .get(&session_id)
-        .map(|session| Leaderboard {
-            session_id,
-            contest_name: session.contest.name.clone(),
-            rankings: session.leaderboard.clone().into_sorted_vec(),
+        .map(|session| {
+            let contest = &session.contest;
+            Leaderboard {
+                session_id,
+                contest_name: contest.name.clone(),
+                rankings: session
+                    .leaderboard
+                    .rankings()
+                    .take(contest.leaderboard_size)
+                    .collect(),
+            }
         })
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))
 }

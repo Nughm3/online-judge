@@ -44,6 +44,14 @@
 
     <pre><code>{{ compile_error }}</code></pre>
   </article>
+  {% else if let Some(runtime_error) = last.runtime_error %}
+  <article>
+    <header>
+      <strong>Runtime output</strong>
+    </header>
+
+    <pre><code>{{ runtime_error }}</code></pre>
+  </article>
   {% else %}
   <figure>
     <table role="grid">

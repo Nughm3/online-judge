@@ -100,7 +100,10 @@
 
 <section id="submit">
   <h2>Submit</h2>
-  <div hx-get="/contest/{{ session_id }}/submit/{{ task_id }}" hx-trigger="load" hx-swap="outerHTML"></div>
+  <div hx-get="/contest/{{ session_id }}/submit/{{ task_id }}" hx-trigger="load" hx-swap="outerHTML"
+    hx-indicator="#progress">
+    <progress id="progress" class="htmx-indicator"></progress>
+  </div>
 </section>
 
 <hr>

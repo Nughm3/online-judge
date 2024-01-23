@@ -18,6 +18,7 @@ pub struct Contest {
     pub languages: Option<Vec<String>>,
     pub duration: Duration,
     pub cooldown: Duration,
+    pub leaderboard_size: usize,
     pub rlimits: ContestResourceLimits,
 }
 

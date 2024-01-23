@@ -1,13 +1,12 @@
-use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use thiserror::Error;
 use time::OffsetDateTime;
 
+pub use self::leaderboard::*;
 use super::{database::Database, Contest};
+
+mod leaderboard;
 
 #[derive(Debug, Clone)]
 pub struct Session {
@@ -19,7 +18,7 @@ pub struct Session {
     pub end: Option<OffsetDateTime>,
 
     // Users
-    pub leaderboard: BinaryHeap<LeaderboardEntry>,
+    pub leaderboard: Leaderboard,
     pub cooldowns: HashMap<(i64, i64), OffsetDateTime>,
 }
 
@@ -53,7 +52,7 @@ impl Session {
             start: None,
             end: None,
             cooldowns: HashMap::new(),
-            leaderboard: BinaryHeap::new(),
+            leaderboard: Leaderboard::new(),
         })
     }
 
@@ -94,56 +93,5 @@ impl Session {
 
             Ok(())
         }
-    }
-
-    pub fn update_leaderboard(&mut self, entry: LeaderboardEntry) -> bool {
-        let mut new = BinaryHeap::new();
-        let mut updated = false;
-
-        while let Some(current) = self.leaderboard.pop() {
-            if current.user_id == entry.user_id {
-                new.push(LeaderboardEntry {
-                    score: current.score.max(entry.score),
-                    ..current
-                });
-                updated = true;
-            } else {
-                new.push(current);
-            }
-        }
-
-        if !updated {
-            new.push(entry);
-        }
-
-        self.leaderboard = new;
-        updated
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LeaderboardEntry {
-    pub score: u32,
-    pub username: String,
-    pub user_id: i64,
-}
-
-impl PartialEq for LeaderboardEntry {
-    fn eq(&self, other: &Self) -> bool {
-        self.score == other.score
-    }
-}
-
-impl Eq for LeaderboardEntry {}
-
-impl PartialOrd for LeaderboardEntry {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for LeaderboardEntry {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.score.cmp(&other.score)
     }
 }

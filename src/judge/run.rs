@@ -134,12 +134,9 @@ fn test(
             panic!("process was killed by signal but it did not exceed the time or memory limit");
         }
     } else {
-        tracing::trace!(
-            "stdout: {stdout}, stderr: {}",
-            std::str::from_utf8(&output.stderr)?
-        );
-
-        Verdict::RuntimeError
+        let stderr = std::str::from_utf8(&output.stderr)?;
+        tracing::trace!("stdout: {stdout}, stderr: {stderr}",);
+        return Err(JudgeError::RuntimeError(stderr.to_owned()));
     };
 
     tracing::trace!("[{test_number}/{test_count}] {}", verdict.fmt_colored());

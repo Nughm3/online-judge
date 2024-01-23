@@ -1,10 +1,10 @@
 # Build
-FROM rust:alpine AS build
+FROM rust:slim AS build
 ENV APP_NAME=online-judge
 
 # Install build dependencies
-RUN apk update && apk upgrade
-RUN apk add --no-cache musl-dev sqlite
+RUN apt update && apt upgrade -y
+RUN apt install -y sqlite3 && apt-get clean
 
 WORKDIR /usr/src
 RUN cargo new ${APP_NAME}
@@ -28,7 +28,7 @@ ENV DATABASE_URL=sqlite:///usr/src/${APP_NAME}/judge.db
 RUN cargo build --release
 
 # Run
-FROM alpine:latest
+FROM debian:stable-slim
 
 ENV APP_NAME=online-judge
 ENV BUILD_DIR=/usr/src/${APP_NAME}
@@ -41,8 +41,8 @@ ENV STATIC_DIR=${JUDGE_DIR}/static
 ENV JUDGE_CONFIG=${JUDGE_DIR}/judge.toml
 
 # Install runtime dependencies
-RUN apk update && apk upgrade
-RUN apk add --no-cache sqlite gcc g++ python3
+RUN apt update && apt upgrade -y
+RUN apt install -y sqlite3 gcc g++ python3 && apt-get clean
 
 WORKDIR ${JUDGE_DIR}
 
