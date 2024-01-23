@@ -14,13 +14,12 @@ use serde::Deserialize;
 use time::macros::format_description;
 use tokio::sync::RwLock;
 
-use self::{contest::*, leaderboard::*, submit::*}; // TODO: remove
 use super::{
     auth::{AuthSession, Backend, Permissions, User},
     database::Database,
     session::Session,
 };
-use crate::contest::*;
+use crate::{contest::*, judge::Config as JudgeConfig};
 
 mod contest;
 mod leaderboard;
@@ -33,11 +32,13 @@ pub struct App {
     pub db: Database,
     pub contests: Vec<Arc<Contest>>,
     pub sessions: RwLock<HashMap<i64, Session>>,
-    pub judge_config: crate::judge::Config,
+    pub judge_config: JudgeConfig,
 }
 
 pub fn router(app: Arc<App>) -> Router {
-    let router = {
+    let contest = {
+        use self::{contest::*, leaderboard::*, submit::*};
+
         async fn ensure_contest_started(
             auth_session: AuthSession,
             State(app): State<Arc<App>>,
@@ -70,13 +71,12 @@ pub fn router(app: Arc<App>) -> Router {
             .route("/task/:task_id", get(task))
             .route_layer(login_required!(Backend, login_url = "/login"))
             .route("/leaderboard", get(leaderboard))
-            .route("/leaderboard_table", get(leaderboard_table))
             .route_layer(map_response_with_state(app.clone(), ensure_contest_started))
             .route("/", get(contest))
     };
 
     Router::new()
-        .nest("/contest/:session_id", router)
+        .nest("/contest/:session_id", contest)
         .route("/", get(index))
         .route("/navbar", get(navbar))
         .with_state(app)

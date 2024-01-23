@@ -16,7 +16,7 @@ use tower_cookies::{Cookie, Cookies};
 use super::{App, ContestNavigation, LANGUAGE_COOKIE};
 use crate::{
     judge::{GradedTask, JudgeError, Submission, Verdict},
-    web::{auth::AuthSession, error::*},
+    web::{auth::AuthSession, error::*, session::LeaderboardEntry},
 };
 
 #[derive(Template)]
@@ -75,7 +75,7 @@ pub async fn submissions(
     let accepting_submissions = session.start.is_some() && session.end.is_none();
 
     let cooldown = session
-        .user_cooldowns
+        .cooldowns
         .get(&(user_id, task_id))
         .and_then(|cooldown| {
             let elapsed = OffsetDateTime::now_utc() - *cooldown;
@@ -172,10 +172,10 @@ pub async fn submit(
     }): Path<ContestNavigation>,
     TypedMultipart(submission): TypedMultipart<Submission>,
 ) -> AppResult<Redirect> {
-    let user_id = auth_session
+    let user = auth_session
         .user
-        .map(|user| user.id())
         .ok_or(AppError::StatusCode(StatusCode::UNAUTHORIZED))?;
+    let user_id = user.id();
 
     let redirect_url = format!("/contest/{session_id}/submit/{task_id}");
 
@@ -194,7 +194,7 @@ pub async fn submit(
             return Ok(Redirect::to(&redirect_url));
         }
 
-        if let Some(previous) = session.user_cooldowns.get(&(user_id, task_id)) {
+        if let Some(previous) = session.cooldowns.get(&(user_id, task_id)) {
             if now - *previous < session.contest.cooldown {
                 tracing::trace!("user (ID: {user_id}) attempted to submit but was on cooldown");
                 return Ok(Redirect::to(&redirect_url));
@@ -237,7 +237,7 @@ pub async fn submit(
     };
 
     let verdict = grade.verdict.to_string();
-    let score = grade.score as i64;
+    let score = grade.score;
 
     let submission_id = sqlx::query!(
         "INSERT INTO submissions (user_id, session_id, task, datetime, code, language, verdict, score, compile_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -296,13 +296,22 @@ pub async fn submit(
 
     cookies.add(Cookie::new(LANGUAGE_COOKIE, submission.language));
 
-    app.sessions
-        .write()
-        .await
-        .get_mut(&session_id)
-        .unwrap()
-        .user_cooldowns
+    let sessions = &mut app.sessions.write().await;
+    let session = sessions.get_mut(&session_id).unwrap();
+
+    session
+        .cooldowns
         .insert((user_id, task_id), OffsetDateTime::now_utc());
+
+    let updated = session.update_leaderboard(LeaderboardEntry {
+        score,
+        username: user.username().to_owned(),
+        user_id,
+    });
+
+    if updated {
+        tracing::trace!("new best submission for this user");
+    }
 
     tracing::trace!("submission successfully judged and recorded");
 

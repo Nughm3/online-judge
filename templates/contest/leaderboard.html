@@ -23,7 +23,17 @@
     </thead>
 
     <tbody>
-      <tr hx-get="/contest/{{ session_id }}/leaderboard_table?page=1" hx-trigger="load" hx-swap="outerHTML"></tr>
+      {% if !rankings.is_empty() %}
+      {% for entry in rankings %}
+      <tr>
+        <th scope="row">{{ loop.index }}</th>
+        <td>{{ entry.username }}</td>
+        <td>{{ entry.score }}</td>
+      </tr>
+      {% endfor %}
+      {% else %}
+      <p><small>No rankings</small></p>
+      {% endif %}
     </tbody>
   </table>
 </figure>

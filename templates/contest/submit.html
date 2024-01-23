@@ -49,7 +49,7 @@
     <table role="grid">
       <thead>
         <tr>
-          <th scope="col">#</th>
+          <th scope="col">Subtask</th>
           <th scope="col">Verdict</th>
           <th scope="col">Score</th>
         </tr>
@@ -58,7 +58,7 @@
       <tbody>
         {% for (verdict, score) in last.subtask_report.scores %}
         <tr>
-          <th scope="row">Subtask {{ loop.index }}</th>
+          <th scope="row">{{ loop.index }}</th>
           <td>{{ verdict }}</td>
           <td>{{ score }}</td>
         </tr>
@@ -68,7 +68,7 @@
       <tfoot>
         {% set (verdict, score) = last.subtask_report.overall %}
         <tr>
-          <th scope="col">Overall</th>
+          <th scope="col">&lowast;</th>
           <td>{{ verdict }}</td>
           <td>{{ score }}</td>
         </tr>
@@ -103,7 +103,7 @@
       <tfoot>
         {% set (verdict, score) = overall.unwrap() %}
         <tr>
-          <th scope="col">#</th>
+          <th scope="col">&lowast;</th>
           <td>Total of {{ reports.len() }} submissions</td>
           <td>{{ verdict }}</td>
           <td>{{ score }}</td>
