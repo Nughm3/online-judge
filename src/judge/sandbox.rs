@@ -107,7 +107,6 @@ impl Sandbox {
     ) -> io::Result<Output> {
         let mut cmd = process::Command::new(&command.executable);
         cmd.args(&command.args)
-            .env_clear()
             .current_dir(self.path())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

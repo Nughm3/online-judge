@@ -42,7 +42,7 @@ ENV JUDGE_CONFIG=${JUDGE_DIR}/judge.toml
 
 # Install runtime dependencies
 RUN apk update && apk upgrade
-RUN apk add --no-cache g++ gcc python3 sqlite
+RUN apk add --no-cache sqlite gcc g++ python3
 
 WORKDIR ${JUDGE_DIR}
 

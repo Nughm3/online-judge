@@ -95,7 +95,6 @@ static SECCOMP_FILTER: Lazy<BpfProgram> = Lazy::new(|| {
             (libc::SYS_readlink, vec![]),
             (libc::SYS_readlinkat, vec![]),
             (libc::SYS_restart_syscall, vec![]),
-            // (libc::SYS_rseq, vec![]),
             (libc::SYS_rt_sigaction, vec![]),
             (libc::SYS_rt_sigprocmask, vec![]),
             (libc::SYS_rt_sigreturn, vec![]),
