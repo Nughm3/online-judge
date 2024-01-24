@@ -1,13 +1,12 @@
-use std::sync::Arc;
-
 use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
 
+use crate::web::session::LeaderboardEntry;
+
 use super::App;
-use crate::web::{error::*, session::LeaderboardEntry};
 
 #[derive(Template)]
 #[template(path = "contest/leaderboard.html")]
@@ -18,25 +17,19 @@ pub struct Leaderboard {
 }
 
 pub async fn leaderboard(
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Path(session_id): Path<i64>,
-) -> AppResult<Leaderboard> {
-    app.clone()
-        .sessions
-        .read()
-        .await
-        .get(&session_id)
-        .map(|session| {
-            let contest = &session.contest;
-            Leaderboard {
-                session_id,
-                contest_name: contest.name.clone(),
-                rankings: session
-                    .leaderboard
-                    .rankings()
-                    .take(contest.leaderboard_size)
-                    .collect(),
-            }
-        })
-        .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))
+) -> Result<Leaderboard, StatusCode> {
+    let sessions = app.sessions.read().await;
+    let session = &sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
+
+    Ok(Leaderboard {
+        session_id,
+        contest_name: session.contest.name.clone(),
+        rankings: session
+            .leaderboard
+            .rankings()
+            .take(session.contest.leaderboard_size)
+            .collect(),
+    })
 }

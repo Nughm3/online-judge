@@ -5,7 +5,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     middleware::map_response_with_state,
-    response::{IntoResponse, Response},
+    response::Response,
     routing::get,
     Router,
 };
@@ -27,25 +27,30 @@ mod submit;
 
 const LANGUAGE_COOKIE: &str = "preferred-language";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct App {
     pub db: Database,
-    pub contests: Vec<Arc<Contest>>,
-    pub sessions: RwLock<HashMap<i64, Session>>,
-    pub judge_config: JudgeConfig,
+    pub contests: Arc<[Arc<Contest>]>,
+    pub sessions: Arc<RwLock<HashMap<i64, Arc<Session>>>>,
+    pub judge_config: Arc<JudgeConfig>,
 }
 
-pub fn router(app: Arc<App>) -> Router {
+pub fn router(app: App) -> Router {
     let contest = {
         use self::{contest::*, leaderboard::*, submit::*};
 
+        #[derive(Deserialize)]
+        struct Params {
+            session_id: Option<i64>,
+        }
+
         async fn ensure_contest_started(
             auth_session: AuthSession,
-            State(app): State<Arc<App>>,
-            Path(params): Path<HashMap<String, String>>,
+            State(app): State<App>,
+            Path(Params { session_id }): Path<Params>,
             response: Response,
-        ) -> Response {
-            if let Some(Ok(session_id)) = params.get("session_id").map(|s| s.parse()) {
+        ) -> Result<Response, StatusCode> {
+            if let Some(session_id) = session_id {
                 if let Some(session) = app.sessions.read().await.get(&session_id) {
                     let admin = if let Some(user) = auth_session.user {
                         auth_session
@@ -58,12 +63,12 @@ pub fn router(app: Arc<App>) -> Router {
                     };
 
                     if session.start.is_some() || admin {
-                        return response;
+                        return Ok(response);
                     }
                 }
             }
 
-            StatusCode::NOT_FOUND.into_response()
+            Err(StatusCode::NOT_FOUND)
         }
 
         Router::new()
@@ -96,10 +101,10 @@ pub(super) struct Pagination {
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexPage {
-    sessions: Vec<Session>,
+    sessions: Vec<Arc<Session>>,
 }
 
-async fn index(State(app): State<Arc<App>>) -> IndexPage {
+async fn index(State(app): State<App>) -> IndexPage {
     IndexPage {
         sessions: app
             .sessions
@@ -131,24 +136,28 @@ struct NavbarQuery {
 }
 
 async fn navbar(
-    State(app): State<Arc<App>>,
     auth_session: AuthSession,
+    State(app): State<App>,
     session: Option<Query<NavbarQuery>>,
 ) -> Result<Navbar, StatusCode> {
     let contest_info = if let Some(Query(NavbarQuery { session_id })) = session {
         let sessions = &app.sessions.read().await;
         let session = sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
+
         Some(ContestInfo {
             session_id,
             name: session.contest.name.clone(),
-            end: session.start.map(|start| {
-                let end = start + session.contest.duration;
-                let format = format_description!(
-                    "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z"
-                );
-                end.format(&format)
-                    .expect("failed to format contest end time")
-            }),
+            end: session
+                .end
+                .or_else(|| session.start.map(|start| start + session.contest.duration))
+                .map(|end| {
+                    let format = format_description!(
+                        "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z"
+                    );
+
+                    end.format(&format)
+                        .expect("failed to format contest end time")
+                }),
         })
     } else {
         None

@@ -20,7 +20,7 @@ use super::{
 };
 use crate::contest::Contest;
 
-pub fn router(app: Arc<App>) -> Router {
+pub fn router(app: App) -> Router {
     Router::new()
         .route("/admin", get(|| async { AdminPage }))
         .route("/admin/sessions", get(session_table).post(sessions_action))
@@ -41,12 +41,12 @@ struct AdminPage;
 #[template(path = "admin/session_table.html")]
 struct SessionTable {
     page: usize,
-    sessions: Vec<Session>,
+    sessions: Vec<Arc<Session>>,
     more: bool,
 }
 
 async fn session_table(
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Query(Pagination { page }): Query<Pagination>,
 ) -> SessionTable {
     let sessions = &app.sessions.read().await;
@@ -85,14 +85,16 @@ struct SessionControl {
 }
 
 async fn sessions_action(
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Query(query): Query<SessionQuery>,
 ) -> AppResult<SessionControl> {
     let app = app.clone();
     let sessions = &mut app.sessions.write().await;
-    let session = sessions
-        .get_mut(&query.id)
-        .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
+    let session = Arc::make_mut(
+        sessions
+            .get_mut(&query.id)
+            .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?,
+    );
 
     match query.action {
         SessionAction::Start => {
@@ -106,7 +108,7 @@ async fn sessions_action(
                     let sessions = &mut app.sessions.write().await;
                     let session = sessions.get_mut(&query.id).unwrap();
 
-                    session.end(&app.db).await.ok();
+                    Arc::make_mut(session).end(&app.db).await.ok();
                 });
             }
 
@@ -131,7 +133,7 @@ struct ContestTable {
 }
 
 async fn contest_table(
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Query(Pagination { page }): Query<Pagination>,
 ) -> ContestTable {
     ContestTable {
@@ -153,12 +155,15 @@ struct ContestCreateSession {
 }
 
 async fn contest_create_session(
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Query(ContestCreateSession { idx }): Query<ContestCreateSession>,
 ) -> AppResult<Response> {
     let contest = app.contests[idx - 1].clone();
     let session = Session::new(&app.db, contest).await?;
-    app.sessions.write().await.insert(session.id, session);
+    app.sessions
+        .write()
+        .await
+        .insert(session.id, Arc::new(session));
     Ok(Response::builder()
         .header("HX-Trigger", "reloadSessions")
         .body("Contest session created".into())?)
@@ -174,7 +179,7 @@ struct UserTable {
 }
 
 async fn user_table(
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Query(Pagination { page }): Query<Pagination>,
 ) -> AppResult<UserTable> {
     let offset = 10 * (page - 1) as i64;
@@ -218,7 +223,7 @@ enum UserAction {
 
 async fn user_action(
     auth_session: AuthSession,
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Query(query): Query<UserQuery>,
 ) -> AppResult<StatusCode> {
     let user = sqlx::query!("SELECT * FROM users WHERE id = ?;", query.id)

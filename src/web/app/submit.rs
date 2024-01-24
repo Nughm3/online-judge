@@ -54,7 +54,7 @@ pub struct SubtaskReport {
 pub async fn submissions(
     auth_session: AuthSession,
     cookies: Cookies,
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Path(ContestNavigation {
         session_id,
         task_id,
@@ -164,7 +164,7 @@ pub async fn submissions(
 pub async fn submit(
     auth_session: AuthSession,
     cookies: Cookies,
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Path(ContestNavigation {
         session_id,
         task_id,
@@ -307,7 +307,7 @@ pub async fn submit(
     cookies.add(Cookie::new(LANGUAGE_COOKIE, submission.language));
 
     let sessions = &mut app.sessions.write().await;
-    let session = sessions.get_mut(&session_id).unwrap();
+    let session = Arc::make_mut(sessions.get_mut(&session_id).unwrap());
 
     session
         .cooldowns

@@ -20,13 +20,11 @@ pub struct ContestPage {
 
 pub async fn contest(
     auth_session: AuthSession,
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Path(session_id): Path<i64>,
 ) -> Result<ContestPage, StatusCode> {
-    let app = app.clone();
     let sessions = app.sessions.read().await;
     let session = sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
-
     Ok(ContestPage {
         session_id,
         contest: session.contest.clone(),
@@ -47,19 +45,17 @@ pub struct TaskPage {
 }
 
 pub async fn task(
-    State(app): State<Arc<App>>,
+    State(app): State<App>,
     Path(ContestNavigation {
         session_id,
         task_id,
     }): Path<ContestNavigation>,
 ) -> Result<TaskPage, StatusCode> {
-    let sessions = &app.sessions.read().await;
-    let contest = sessions
-        .get(&session_id)
-        .map(|session| session.contest.clone())
-        .ok_or(StatusCode::NOT_FOUND)?;
+    let sessions = app.sessions.read().await;
+    let session = sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
 
-    let task = contest
+    let task = session
+        .contest
         .tasks
         .get(task_id as usize - 1)
         .cloned()
@@ -67,10 +63,10 @@ pub async fn task(
 
     Ok(TaskPage {
         session_id,
-        contest_name: contest.name.clone(),
+        contest_name: session.contest.name.clone(),
         task_id,
         has_prev: task_id > 1,
-        has_next: task_id < contest.tasks.len() as i64,
+        has_next: task_id < session.contest.tasks.len() as i64,
         task,
     })
 }

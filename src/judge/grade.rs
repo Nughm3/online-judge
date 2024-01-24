@@ -29,22 +29,22 @@ pub struct GradedTest {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Verdict {
-    CompileError,
-    RuntimeError,
     WrongAnswer,
     TimeLimitExceeded,
     MemoryLimitExceeded,
     PartialScore,
+    CompileError,
+    RuntimeError,
     Accepted,
 }
 
 impl Verdict {
     pub fn fmt_colored(&self) -> impl fmt::Display + '_ {
         let paint = match self {
-            Verdict::CompileError | Verdict::RuntimeError => Paint::yellow,
             Verdict::WrongAnswer => Paint::red,
             Verdict::TimeLimitExceeded | Verdict::MemoryLimitExceeded => Paint::magenta,
             Verdict::PartialScore => Paint::blue,
+            Verdict::CompileError | Verdict::RuntimeError => Paint::yellow,
             Verdict::Accepted => Paint::green,
         };
 

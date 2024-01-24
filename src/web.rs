@@ -68,12 +68,12 @@ pub async fn serve(config: Config) -> error::AppResult<()> {
         toml::from_str(&judge_config_file)?
     };
 
-    let state = Arc::new(app::App {
+    let state = app::App {
         db,
-        contests,
-        sessions: RwLock::new(HashMap::new()),
+        contests: Arc::from(contests.as_slice()),
+        sessions: Arc::new(RwLock::new(HashMap::new())),
         judge_config,
-    });
+    };
 
     let app = admin::router(state.clone())
         .merge(app::router(state))
