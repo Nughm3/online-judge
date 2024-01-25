@@ -13,11 +13,13 @@ use time::OffsetDateTime;
 use tokio_stream::StreamExt;
 use tower_cookies::{Cookie, Cookies};
 
-use super::{App, ContestNavigation, LANGUAGE_COOKIE};
+use super::{App, ContestNavigation};
 use crate::{
     judge::{GradedTask, JudgeError, Submission, Verdict},
     web::{auth::AuthSession, error::*, session::LeaderboardEntry},
 };
+
+const LANGUAGE_COOKIE: &str = "preferred-language";
 
 #[derive(Template)]
 #[template(path = "contest/submit.html")]

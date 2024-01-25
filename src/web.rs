@@ -1,6 +1,14 @@
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
 
-use axum::{self, error_handling::HandleErrorLayer, http::StatusCode, BoxError};
+use askama::Template;
+use axum::{
+    self,
+    error_handling::HandleErrorLayer,
+    extract::Request,
+    http::StatusCode,
+    middleware::{from_fn, Next},
+    BoxError,
+};
 use axum_login::{
     tower_sessions::{MemoryStore, SessionManagerLayer},
     AuthManagerLayerBuilder,
@@ -83,6 +91,21 @@ pub async fn serve(config: Config) -> error::AppResult<()> {
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(CompressionLayer::new())
+                .layer(from_fn(|request: Request, next: Next| async {
+                    #[derive(Template)]
+                    #[template(path = "not_found.html")]
+                    struct NotFound;
+
+                    let htmx = request.headers().contains_key("HX-Request");
+
+                    let mut response = next.run(request).await;
+                    if response.status() == StatusCode::NOT_FOUND && !htmx {
+                        *response.body_mut() =
+                            NotFound.render().expect("failed to render template").into();
+                    }
+
+                    response
+                }))
                 .layer(CookieManagerLayer::new())
                 .layer(auth_service),
         );

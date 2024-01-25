@@ -22,7 +22,10 @@
   <ul>
     {% if let Some(user) = user %}
     <li>Logged in as <strong>{{ user.username() }}</strong></li>
-    <li><a href="/logout" role="button">Log out</a></li>
+    {% if admin %}
+    <li><a href="/admin" role="button" class="secondary">Admin</a></li>
+    {% endif %}
+    <li><a href="/logout" role="button" onclick="return confirm('Are you sure you want to log out?')">Log out</a></li>
     {% else %}
     <li><a href="/login" role="button" class="secondary">Log in</a></li>
     <li><a href="/register" role="button">Register</a></li>

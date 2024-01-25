@@ -17,6 +17,7 @@ use tokio::sync::RwLock;
 use super::{
     auth::{AuthSession, Backend, Permissions, User},
     database::Database,
+    error::{AppError, AppResult},
     session::Session,
 };
 use crate::{contest::*, judge::Config as JudgeConfig};
@@ -24,8 +25,6 @@ use crate::{contest::*, judge::Config as JudgeConfig};
 mod contest;
 mod leaderboard;
 mod submit;
-
-const LANGUAGE_COOKIE: &str = "preferred-language";
 
 #[derive(Debug, Clone)]
 pub struct App {
@@ -122,6 +121,7 @@ async fn index(State(app): State<App>) -> IndexPage {
 #[template(path = "navbar.html")]
 struct Navbar {
     user: Option<User>,
+    admin: bool,
     contest_info: Option<ContestInfo>,
 }
 
@@ -140,32 +140,42 @@ async fn navbar(
     auth_session: AuthSession,
     State(app): State<App>,
     session: Option<Query<NavbarQuery>>,
-) -> Result<Navbar, StatusCode> {
+) -> AppResult<Navbar> {
     let contest_info = if let Some(Query(NavbarQuery { session_id })) = session {
         let sessions = &app.sessions.read().await;
-        let session = sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
+        let session = sessions
+            .get(&session_id)
+            .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
         Some(ContestInfo {
             session_id,
             name: session.contest.name.clone(),
-            end: session
-                .end
-                .or_else(|| session.start.map(|start| start + session.contest.duration))
-                .map(|end| {
-                    let format = format_description!(
-                        "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z"
-                    );
+            end: session.start.map(|start| {
+                let end = start + session.contest.duration;
+                let format = format_description!(
+                    "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z"
+                );
 
-                    end.format(&format)
-                        .expect("failed to format contest end time")
-                }),
+                end.format(&format)
+                    .expect("failed to format contest end time")
+            }),
         })
     } else {
         None
     };
 
+    let admin = if let Some(user) = &auth_session.user {
+        auth_session
+            .backend
+            .has_perm(user, Permissions::ADMIN)
+            .await?
+    } else {
+        false
+    };
+
     Ok(Navbar {
         user: auth_session.user,
+        admin,
         contest_info,
     })
 }
