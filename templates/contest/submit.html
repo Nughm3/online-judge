@@ -3,7 +3,7 @@
   <form hx-boost hx-post="/contest/{{ session_id }}/submit/{{ task_id }}" hx-encoding="multipart/form-data"
     hx-target="#submission-container" hx-indicator="#progress">
     <div class="grid">
-      <input id="code" type="file" name="code" />
+      <input id="code" type="file" name="code" required />
 
       <select id="language" name="language">
         {% for language in languages %}

@@ -23,12 +23,9 @@ use crate::contest::Contest;
 pub fn router(app: App) -> Router {
     Router::new()
         .route("/admin", get(|| async { AdminPage }))
-        .route("/admin/sessions", get(session_table).post(sessions_action))
-        .route(
-            "/admin/contests",
-            get(contest_table).post(contest_create_session),
-        )
-        .route("/admin/users", get(user_table).post(user_action))
+        .route("/admin/sessions", get(sessions).post(sessions_action))
+        .route("/admin/contests", get(contests).put(create_session))
+        .route("/admin/users", get(users).delete(delete_user))
         .route_layer(permission_required!(Backend, Permissions::ADMIN))
         .with_state(app)
 }
@@ -45,7 +42,7 @@ struct SessionTable {
     more: bool,
 }
 
-async fn session_table(
+async fn sessions(
     State(app): State<App>,
     Query(Pagination { page }): Query<Pagination>,
 ) -> SessionTable {
@@ -132,7 +129,7 @@ struct ContestTable {
     more: bool,
 }
 
-async fn contest_table(
+async fn contests(
     State(app): State<App>,
     Query(Pagination { page }): Query<Pagination>,
 ) -> ContestTable {
@@ -150,13 +147,13 @@ async fn contest_table(
 }
 
 #[derive(Debug, Deserialize)]
-struct ContestCreateSession {
+struct CreateSession {
     idx: usize,
 }
 
-async fn contest_create_session(
+async fn create_session(
     State(app): State<App>,
-    Query(ContestCreateSession { idx }): Query<ContestCreateSession>,
+    Query(CreateSession { idx }): Query<CreateSession>,
 ) -> AppResult<Response> {
     let contest = app.contests[idx - 1].clone();
     let session = Session::new(&app.db, contest).await?;
@@ -178,7 +175,7 @@ struct UserTable {
     more: bool,
 }
 
-async fn user_table(
+async fn users(
     State(app): State<App>,
     Query(Pagination { page }): Query<Pagination>,
 ) -> AppResult<UserTable> {
@@ -212,40 +209,29 @@ async fn user_table(
 #[derive(Debug, Deserialize)]
 struct UserQuery {
     id: i64,
-    action: UserAction,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum UserAction {
-    Delete,
-}
-
-async fn user_action(
+async fn delete_user(
     auth_session: AuthSession,
     State(app): State<App>,
-    Query(query): Query<UserQuery>,
+    Query(UserQuery { id }): Query<UserQuery>,
 ) -> AppResult<StatusCode> {
-    let user = sqlx::query!("SELECT * FROM users WHERE id = ?;", query.id)
+    let user = sqlx::query!("SELECT * FROM users WHERE id = ?;", id)
         .fetch_optional(app.db.pool())
         .await?
         .map(|user| User::new(user.id, &user.username, &user.password))
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
-    Ok(match query.action {
-        UserAction::Delete => {
-            if auth_session
-                .backend
-                .has_perm(&user, Permissions::ADMIN)
-                .await?
-            {
-                StatusCode::UNAUTHORIZED
-            } else {
-                sqlx::query!("DELETE FROM users WHERE id = ?;", query.id)
-                    .execute(app.db.pool())
-                    .await?;
-                StatusCode::OK
-            }
-        }
-    })
+    if auth_session
+        .backend
+        .has_perm(&user, Permissions::ADMIN)
+        .await?
+    {
+        Ok(StatusCode::UNAUTHORIZED)
+    } else {
+        sqlx::query!("DELETE FROM users WHERE id = ?;", id)
+            .execute(app.db.pool())
+            .await?;
+        Ok(StatusCode::OK)
+    }
 }

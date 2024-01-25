@@ -4,7 +4,7 @@
 <tr>
   <th scope="row">{{ index }}</th>
   <td>{{ contest.name }}</td>
-  <td><button hx-post="/admin/contests?idx={{ index }}" hx-swap="outerHTML">Create Session</button></td>
+  <td><button hx-put="/admin/contests?idx={{ index }}" hx-swap="outerHTML">Create Session</button></td>
 </tr>
 {% endfor %}
 

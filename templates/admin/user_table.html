@@ -8,8 +8,8 @@
     {% if admins.contains(user_id) %}
     N/A
     {% else %}
-    <button hx-post="/admin/users?id={{ user.id() }}&action=delete"
-      hx-confirm="Are you sure you want to delete this user?" hx-target="closest tr" hx-swap="delete">Delete</button>
+    <button hx-delete="/admin/users?id={{ user.id() }}" hx-confirm="Are you sure you want to delete this user?"
+      hx-target="closest tr" hx-swap="delete">Delete</button>
     {% endif %}
   </td>
 </tr>
