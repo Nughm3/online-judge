@@ -21,7 +21,6 @@ use tower_http::{compression::CompressionLayer, services::ServeDir, trace::Trace
 use self::database::Database;
 use crate::contest::Contest;
 
-mod admin;
 mod app;
 mod auth;
 mod database;
@@ -76,42 +75,39 @@ pub async fn serve(config: Config) -> error::AppResult<()> {
         toml::from_str(&judge_config_file)?
     };
 
-    let state = app::App {
+    let app = app::router(app::App {
         db,
-        contests: Arc::from(contests.as_slice()),
+        contests,
         sessions: Arc::new(RwLock::new(HashMap::new())),
         judge_config,
-    };
+    })
+    .merge(auth::router())
+    .nest_service("/static", ServeDir::new(config.static_dir))
+    .layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(CompressionLayer::new())
+            .layer(from_fn(|request: Request, next: Next| async {
+                #[derive(Template)]
+                #[template(path = "not_found.html")]
+                struct NotFound;
 
-    let app = admin::router(state.clone())
-        .merge(app::router(state))
-        .merge(auth::router())
-        .nest_service("/static", ServeDir::new(config.static_dir))
-        .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(CompressionLayer::new())
-                .layer(from_fn(|request: Request, next: Next| async {
-                    #[derive(Template)]
-                    #[template(path = "not_found.html")]
-                    struct NotFound;
+                let htmx = request.headers().contains_key("HX-Request");
 
-                    let htmx = request.headers().contains_key("HX-Request");
+                let mut response = next.run(request).await;
+                if response.status() == StatusCode::NOT_FOUND && !htmx {
+                    *response.body_mut() =
+                        NotFound.render().expect("failed to render template").into();
+                }
 
-                    let mut response = next.run(request).await;
-                    if response.status() == StatusCode::NOT_FOUND && !htmx {
-                        *response.body_mut() =
-                            NotFound.render().expect("failed to render template").into();
-                    }
+                response
+            }))
+            .layer(CookieManagerLayer::new())
+            .layer(auth_service),
+    );
 
-                    response
-                }))
-                .layer(CookieManagerLayer::new())
-                .layer(auth_service),
-        );
-
-    let listener = TcpListener::bind(&config.server_address).await?;
-    tracing::info!("listening on http://{}", config.server_address);
+    let listener = TcpListener::bind(config.server_address).await?;
+    tracing::info!("listening on http://{}", listener.local_addr().unwrap());
 
     axum::serve(listener, app).await?;
 

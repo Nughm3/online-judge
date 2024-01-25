@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use askama::Template;
 use axum::{
-    extract::{Query, State},
+    extract::{Extension, Query, State},
     http::StatusCode,
     response::Response,
     routing::get,
@@ -10,24 +10,31 @@ use axum::{
 };
 use axum_login::{permission_required, AuthzBackend};
 use serde::Deserialize;
+use tokio::sync::watch::Sender;
 use tokio_stream::StreamExt;
 
-use super::{
-    app::{App, Pagination},
+use crate::contest::Contest;
+use crate::web::{
+    app::App,
     auth::{AuthSession, Backend, Permissions, User},
     error::*,
     session::Session,
 };
-use crate::contest::Contest;
 
-pub fn router(app: App) -> Router {
+pub fn router(app: App, tx: Arc<Sender<Vec<Arc<Session>>>>) -> Router {
     Router::new()
-        .route("/admin", get(|| async { AdminPage }))
+        .route("/admin", get(move || async { AdminPage }))
         .route("/admin/sessions", get(sessions).post(sessions_action))
         .route("/admin/contests", get(contests).put(create_session))
         .route("/admin/users", get(users).delete(delete_user))
         .route_layer(permission_required!(Backend, Permissions::ADMIN))
+        .layer(Extension(tx))
         .with_state(app)
+}
+
+#[derive(Debug, Deserialize)]
+struct Pagination {
+    page: usize,
 }
 
 #[derive(Template)]
@@ -83,36 +90,45 @@ struct SessionControl {
 
 async fn sessions_action(
     State(app): State<App>,
+    Extension(tx): Extension<Arc<Sender<Vec<Arc<Session>>>>>,
     Query(query): Query<SessionQuery>,
 ) -> AppResult<SessionControl> {
-    let app = app.clone();
-    let sessions = &mut app.sessions.write().await;
-    let session = Arc::make_mut(
-        sessions
-            .get_mut(&query.id)
-            .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?,
-    );
+    {
+        let sessions = &mut app.sessions.write().await;
+        let session = Arc::make_mut(
+            sessions
+                .get_mut(&query.id)
+                .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?,
+        );
 
-    match query.action {
-        SessionAction::Start => {
-            {
-                let app = app.clone();
-                let duration = session.contest.duration;
-                tokio::task::spawn(async move {
-                    tokio::time::sleep(duration.try_into().expect("invalid contest duration"))
-                        .await;
+        match query.action {
+            SessionAction::Start => {
+                {
+                    let app = app.clone();
+                    let duration = session.contest.duration;
+                    tokio::task::spawn(async move {
+                        tokio::time::sleep(duration.try_into().expect("invalid contest duration"))
+                            .await;
 
-                    let sessions = &mut app.sessions.write().await;
-                    let session = sessions.get_mut(&query.id).unwrap();
+                        let sessions = &mut app.sessions.write().await;
+                        let session = sessions.get_mut(&query.id).unwrap();
 
-                    Arc::make_mut(session).end(&app.db).await.ok();
-                });
+                        Arc::make_mut(session).end(&app.db).await.ok();
+                    });
+                }
+
+                session.start(&app.db).await?
             }
-
-            session.start(&app.db).await?
+            SessionAction::End => session.end(&app.db).await?,
         }
-        SessionAction::End => session.end(&app.db).await?,
     }
+
+    let sessions = &mut app.sessions.read().await;
+    let session = sessions
+        .get(&query.id)
+        .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
+
+    tx.send(sessions.values().cloned().collect())?;
 
     Ok(SessionControl {
         id: query.id,
@@ -153,14 +169,19 @@ struct CreateSession {
 
 async fn create_session(
     State(app): State<App>,
+    Extension(tx): Extension<Arc<Sender<Vec<Arc<Session>>>>>,
     Query(CreateSession { idx }): Query<CreateSession>,
 ) -> AppResult<Response> {
     let contest = app.contests[idx - 1].clone();
     let session = Session::new(&app.db, contest).await?;
+
     app.sessions
         .write()
         .await
         .insert(session.id, Arc::new(session));
+
+    tx.send(app.sessions.read().await.values().cloned().collect())?;
+
     Ok(Response::builder()
         .header("HX-Trigger", "reloadSessions")
         .body("Contest session created".into())?)

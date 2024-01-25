@@ -1,18 +1,19 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, convert::Infallible, sync::Arc};
 
 use askama::Template;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     middleware::map_response_with_state,
-    response::Response,
+    response::{sse::*, Response},
     routing::get,
     Router,
 };
 use axum_login::{login_required, AuthzBackend};
 use serde::Deserialize;
 use time::macros::format_description;
-use tokio::sync::RwLock;
+use tokio::sync::{watch, RwLock};
+use tokio_stream::{wrappers::WatchStream, Stream, StreamExt};
 
 use super::{
     auth::{AuthSession, Backend, Permissions, User},
@@ -22,6 +23,7 @@ use super::{
 };
 use crate::{contest::*, judge::Config as JudgeConfig};
 
+mod admin;
 mod contest;
 mod leaderboard;
 mod submit;
@@ -29,7 +31,7 @@ mod submit;
 #[derive(Debug, Clone)]
 pub struct App {
     pub db: Database,
-    pub contests: Arc<[Arc<Contest>]>,
+    pub contests: Vec<Arc<Contest>>,
     pub sessions: Arc<RwLock<HashMap<i64, Arc<Session>>>>,
     pub judge_config: Arc<JudgeConfig>,
 }
@@ -80,41 +82,46 @@ pub fn router(app: App) -> Router {
             .route("/", get(contest))
     };
 
-    Router::new()
+    let (tx, rx) = watch::channel(Vec::new());
+
+    let router = Router::new()
         .nest("/contest/:session_id", contest)
-        .route("/", get(index))
+        .route("/", get(move || async { IndexPage }))
+        .route("/sessions", get(move || sessions_sse(rx)))
         .route("/navbar", get(navbar))
-        .with_state(app)
+        .with_state(app.clone());
+
+    admin::router(app, Arc::new(tx)).merge(router)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ContestNavigation {
+struct ContestNavigation {
     session_id: i64,
     task_id: i64,
 }
 
-#[derive(Debug, Deserialize)]
-pub(super) struct Pagination {
-    pub(super) page: usize,
-}
-
 #[derive(Template)]
 #[template(path = "index.html")]
-struct IndexPage {
+struct IndexPage;
+
+#[derive(Template)]
+#[template(path = "sessions_sse.html")]
+struct Sessions {
     sessions: Vec<Arc<Session>>,
 }
 
-async fn index(State(app): State<App>) -> IndexPage {
-    IndexPage {
-        sessions: app
-            .sessions
-            .read()
-            .await
-            .values()
-            .filter(|session| session.end.is_none())
-            .cloned()
-            .collect(),
-    }
+async fn sessions_sse(
+    rx: watch::Receiver<Vec<Arc<Session>>>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    Sse::new(WatchStream::new(rx).map(|sessions| {
+        tracing::info!("got here");
+        Ok(Event::default().event("session").data(
+            Sessions { sessions }
+                .render()
+                .expect("failed to render template"),
+        ))
+    }))
+    .keep_alive(KeepAlive::new())
 }
 
 #[derive(Template)]
@@ -150,15 +157,21 @@ async fn navbar(
         Some(ContestInfo {
             session_id,
             name: session.contest.name.clone(),
-            end: session.start.map(|start| {
-                let end = start + session.contest.duration;
-                let format = format_description!(
-                    "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z"
-                );
+            end: session
+                .end
+                .is_none()
+                .then(|| {
+                    session.start.map(|start| {
+                        let end = start + session.contest.duration;
+                        let format = format_description!(
+                            "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z"
+                        );
 
-                end.format(&format)
-                    .expect("failed to format contest end time")
-            }),
+                        end.format(&format)
+                            .expect("failed to format contest end time")
+                    })
+                })
+                .flatten(),
         })
     } else {
         None

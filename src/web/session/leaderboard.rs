@@ -16,7 +16,7 @@ impl Leaderboard {
     }
 
     pub fn update(&mut self, entry: LeaderboardEntry) {
-        let mut new = BinaryHeap::new();
+        let mut new = BinaryHeap::with_capacity(self.entries.len());
 
         let mut updated = false;
         while let Some(current) = self.entries.pop() {

@@ -62,12 +62,10 @@
     updateDuration(end - Date.now());
     const intervalId = setInterval(() => {
       const timeLeft = end - Date.now();
-      if (timeLeft <= 0) {
-        elem.innerHTML = "Ended";
+      if (timeLeft <= 0)
         clearInterval(intervalId);
-      }
-
-      updateDuration(timeLeft);
+      else
+        updateDuration(timeLeft);
     }, 1000);
   </script>
   {% endif %}

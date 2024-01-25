@@ -2,42 +2,24 @@
 
 {% block title %}Online Judge{% endblock %}
 
+{% block head %}
+<script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+{% endblock %}
+
 {% block main %}
 <h1>Online Judge</h1>
 
 <p>Welcome to the online judge web interface!</p>
 
+<h6>Disclaimer</h6>
+<p>The online judge platform is currently in <strong>beta</strong>, so bugs are to be expected. Please report any issues
+  that you find!</p>
+
 <section id="contests">
   <h2>Contests</h2>
 
-  {% if !sessions.is_empty() %}
-  <figure>
-    <table role="grid">
-      <thead>
-        <th scope="col">Contest</th>
-        <th scope="col">Status</th>
-      </thead>
-
-      <tbody>
-        {% for session in sessions %}
-        <tr>
-          <th scope="row"><a href="/contest/{{ session.id }}">{{ session.contest.name }}</a></th>
-
-          {% if let Some(start) = session.start %}
-          <td><span>Started at {{ start }}</span></td>
-          {% else %}
-          <td>Unstarted</td>
-          {% endif %}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </figure>
-
-  <ul>
-  </ul>
-  {% else %}
-  <p><small>No active contests</small></p>
-  {% endif %}
+  <div hx-ext="sse" sse-connect="/sessions" sse-swap="session" hx-indicator="#progress">
+    <progress id="progress" class="htmx-indicator"></progress>
+  </div>
 </section>
 {% endblock %}
