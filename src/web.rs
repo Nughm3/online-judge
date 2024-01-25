@@ -8,7 +8,7 @@ use axum_login::{
 use tokio::{fs, net::TcpListener, sync::RwLock};
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
-use tower_http::{services::ServeDir, trace::TraceLayer};
+use tower_http::{compression::CompressionLayer, services::ServeDir, trace::TraceLayer};
 
 use self::database::Database;
 use crate::contest::Contest;
@@ -82,6 +82,7 @@ pub async fn serve(config: Config) -> error::AppResult<()> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(CompressionLayer::new())
                 .layer(CookieManagerLayer::new())
                 .layer(auth_service),
         );

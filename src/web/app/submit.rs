@@ -313,7 +313,7 @@ pub async fn submit(
         .cooldowns
         .insert((user_id, task_id), OffsetDateTime::now_utc());
 
-    session.leaderboard.update(LeaderboardEntry {
+    session.update_leaderboard(LeaderboardEntry {
         score,
         username: user.username().to_owned(),
         user_id,

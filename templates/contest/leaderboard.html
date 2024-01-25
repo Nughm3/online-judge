@@ -2,6 +2,10 @@
 
 {% block title %}Leaderboard - {{ contest_name }}{% endblock %}
 
+{% block head %}
+<script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+{% endblock %}
+
 {% block nav %}
 <div hx-get="/navbar?session_id={{ session_id }}" hx-trigger="load" hx-swap="outerHTML"></div>
 {% endblock %}
@@ -12,29 +16,8 @@
   <h6><a href="/contest/{{ session_id }}">{{ contest_name }}</a></h6>
 </hgroup>
 
-<figure>
-  <table role="grid">
-    <thead>
-      <tr>
-        <th scope="col">#</th>
-        <th scope="col">User</th>
-        <th scope="col">Score</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {% if !rankings.is_empty() %}
-      {% for entry in rankings %}
-      <tr>
-        <th scope="row">{{ loop.index }}</th>
-        <td>{{ entry.username }}</td>
-        <td>{{ entry.score }}</td>
-      </tr>
-      {% endfor %}
-      {% else %}
-      <p><small>No rankings</small></p>
-      {% endif %}
-    </tbody>
-  </table>
-</figure>
+<div hx-ext="sse" sse-connect="/contest/{{ session_id }}/leaderboard/sse" sse-swap="leaderboard"
+  hx-indicator="#progress">
+  <progress id="progress" class="htmx-indicator"></progress>
+</div>
 {% endblock %}

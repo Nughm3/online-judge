@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use thiserror::Error;
 use time::OffsetDateTime;
+use tokio::sync::watch;
 
 pub use self::leaderboard::*;
 use super::{database::Database, Contest};
@@ -19,6 +20,8 @@ pub struct Session {
 
     // Users
     pub leaderboard: Leaderboard,
+    pub tx: Arc<watch::Sender<Leaderboard>>,
+    pub rx: watch::Receiver<Leaderboard>,
     pub cooldowns: HashMap<(i64, i64), OffsetDateTime>,
 }
 
@@ -46,12 +49,16 @@ impl Session {
         .await?
         .last_insert_rowid();
 
+        let (tx, rx) = watch::channel(Leaderboard::new());
+
         Ok(Session {
             id,
             contest,
             start: None,
             end: None,
             cooldowns: HashMap::new(),
+            tx: Arc::new(tx),
+            rx,
             leaderboard: Leaderboard::new(),
         })
     }
@@ -93,5 +100,10 @@ impl Session {
 
             Ok(())
         }
+    }
+
+    pub fn update_leaderboard(&mut self, entry: LeaderboardEntry) {
+        self.tx
+            .send_modify(move |leaderboard| leaderboard.update(entry));
     }
 }

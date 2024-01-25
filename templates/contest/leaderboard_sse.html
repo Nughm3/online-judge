@@ -1,0 +1,25 @@
+{% if !rankings.is_empty() %}
+<figure>
+  <table role="grid">
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">User</th>
+        <th scope="col">Score</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for entry in rankings %}
+      <tr>
+        <th scope="row">{{ loop.index }}</th>
+        <td>{{ entry.username }}</td>
+        <td>{{ entry.score }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</figure>
+{% else %}
+<small>No rankings</small>
+{% endif %}

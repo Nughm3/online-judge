@@ -31,7 +31,7 @@ tokio-stream = { version = "0.1.14", features = ["full"] }
 toml = "0.8.8"
 tower = "0.4.13"
 tower-cookies = "0.10.0"
-tower-http = { version = "0.5.0", features = ["fs", "trace"] }
+tower-http = { version = "0.5.0", features = ["fs", "trace", "compression-full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing-tree = "0.3.0"

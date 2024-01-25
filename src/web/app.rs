@@ -76,6 +76,7 @@ pub fn router(app: App) -> Router {
             .route("/task/:task_id", get(task))
             .route_layer(login_required!(Backend, login_url = "/login"))
             .route("/leaderboard", get(leaderboard))
+            .route("/leaderboard/sse", get(leaderboard_sse))
             .route_layer(map_response_with_state(app.clone(), ensure_contest_started))
             .route("/", get(contest))
     };
