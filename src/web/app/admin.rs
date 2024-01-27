@@ -21,7 +21,7 @@ use crate::web::{
     session::Session,
 };
 
-pub fn router(app: App, tx: Arc<Sender<Vec<Arc<Session>>>>) -> Router {
+pub fn router(app: App, tx: Arc<Sender<()>>) -> Router {
     Router::new()
         .route("/admin", get(move || async { AdminPage }))
         .route("/admin/sessions", get(sessions).post(sessions_action))
@@ -90,7 +90,7 @@ struct SessionControl {
 
 async fn sessions_action(
     State(app): State<App>,
-    Extension(tx): Extension<Arc<Sender<Vec<Arc<Session>>>>>,
+    Extension(tx): Extension<Arc<Sender<()>>>,
     Query(query): Query<SessionQuery>,
 ) -> AppResult<SessionControl> {
     {
@@ -128,7 +128,7 @@ async fn sessions_action(
         .get(&query.id)
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
-    tx.send(sessions.values().cloned().collect())?;
+    tx.send(())?;
 
     Ok(SessionControl {
         id: query.id,
@@ -169,7 +169,7 @@ struct CreateSession {
 
 async fn create_session(
     State(app): State<App>,
-    Extension(tx): Extension<Arc<Sender<Vec<Arc<Session>>>>>,
+    Extension(tx): Extension<Arc<Sender<()>>>,
     Query(CreateSession { idx }): Query<CreateSession>,
 ) -> AppResult<Response> {
     let contest = app.contests[idx - 1].clone();
@@ -180,7 +180,7 @@ async fn create_session(
         .await
         .insert(session.id, Arc::new(session));
 
-    tx.send(app.sessions.read().await.values().cloned().collect())?;
+    tx.send(())?;
 
     Ok(Response::builder()
         .header("HX-Trigger", "reloadSessions")

@@ -77,17 +77,19 @@ pub fn router(app: App) -> Router {
             .route("/task/:task_id", get(task))
             .route_layer(login_required!(Backend, login_url = "/login"))
             .route("/leaderboard", get(leaderboard))
+            .route("/leaderboard/rankings", get(leaderboard_rankings))
             .route("/leaderboard/sse", get(leaderboard_sse))
             .route_layer(map_response_with_state(app.clone(), ensure_contest_started))
             .route("/", get(contest))
     };
 
-    let (tx, rx) = watch::channel(Vec::new());
+    let (tx, rx) = watch::channel(());
 
     let router = Router::new()
         .nest("/contest/:session_id", contest)
         .route("/", get(move || async { IndexPage }))
-        .route("/sessions", get(move || sessions_sse(rx)))
+        .route("/sessions", get(sessions))
+        .route("/sessions/sse", get(move || sessions_sse(rx)))
         .route("/navbar", get(navbar))
         .with_state(app.clone());
 
@@ -105,23 +107,28 @@ struct ContestNavigation {
 struct IndexPage;
 
 #[derive(Template)]
-#[template(path = "sessions_sse.html")]
+#[template(path = "sessions.html")]
 struct Sessions {
     sessions: Vec<Arc<Session>>,
 }
 
+async fn sessions(State(app): State<App>) -> Sessions {
+    Sessions {
+        sessions: app
+            .sessions
+            .read()
+            .await
+            .iter()
+            .map(|(_, session)| session.clone())
+            .collect(),
+    }
+}
+
 async fn sessions_sse(
-    rx: watch::Receiver<Vec<Arc<Session>>>,
+    rx: watch::Receiver<()>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    Sse::new(WatchStream::new(rx).map(|sessions| {
-        tracing::info!("got here");
-        Ok(Event::default().event("session").data(
-            Sessions { sessions }
-                .render()
-                .expect("failed to render template"),
-        ))
-    }))
-    .keep_alive(KeepAlive::new())
+    Sse::new(WatchStream::new(rx).map(|_| Ok(Event::default().event("session"))))
+        .keep_alive(KeepAlive::new())
 }
 
 #[derive(Template)]

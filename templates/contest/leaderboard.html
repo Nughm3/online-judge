@@ -16,8 +16,10 @@
   <h6><a href="/contest/{{ session_id }}">{{ contest_name }}</a></h6>
 </hgroup>
 
-<div hx-ext="sse" sse-connect="/contest/{{ session_id }}/leaderboard/sse" sse-swap="leaderboard"
-  hx-indicator="#progress">
-  <progress id="progress" class="htmx-indicator"></progress>
+<div hx-ext="sse" sse-connect="/contest/{{ session_id }}/leaderboard/sse">
+  <div hx-get="/contest/{{ session_id }}/leaderboard/rankings" hx-swap="innerHTML" hx-trigger="load, sse:leaderboard"
+    hx-indicator="#progress">
+    <progress id="progress" class="htmx-indicator"></progress>
+  </div>
 </div>
 {% endblock %}

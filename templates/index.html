@@ -18,8 +18,10 @@
 <section id="contests">
   <h2>Contests</h2>
 
-  <div hx-ext="sse" sse-connect="/sessions" sse-swap="session" hx-indicator="#progress">
-    <progress id="progress" class="htmx-indicator"></progress>
+  <div hx-ext="sse" sse-connect="/sessions/sse">
+    <div hx-get="/sessions" hx-swap="innerHTML" hx-trigger="load, sse:session" hx-indicator="#progress">
+      <progress id="progress" class="htmx-indicator"></progress>
+    </div>
   </div>
 </section>
 {% endblock %}

@@ -33,9 +33,26 @@ pub async fn leaderboard(
 }
 
 #[derive(Template)]
-#[template(path = "contest/leaderboard_sse.html")]
-struct LeaderboardRankings {
+#[template(path = "contest/leaderboard_rankings.html")]
+pub struct LeaderboardRankings {
     rankings: Vec<LeaderboardEntry>,
+}
+
+pub async fn leaderboard_rankings(
+    State(app): State<App>,
+    Path(session_id): Path<i64>,
+) -> Result<LeaderboardRankings, StatusCode> {
+    let sessions = app.sessions.read().await;
+    let session = &sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
+    let leaderboard_size = session.contest.leaderboard_size;
+
+    Ok(LeaderboardRankings {
+        rankings: session
+            .leaderboard
+            .rankings()
+            .take(leaderboard_size)
+            .collect(),
+    })
 }
 
 pub async fn leaderboard_sse(
@@ -44,18 +61,8 @@ pub async fn leaderboard_sse(
 ) -> Result<Sse<impl Stream<Item = Result<Event, axum::Error>>>, StatusCode> {
     let sessions = app.sessions.read().await;
     let session = &sessions.get(&session_id).ok_or(StatusCode::NOT_FOUND)?;
-    let leaderboard_size = session.contest.leaderboard_size;
-
     Ok(Sse::new(
-        WatchStream::new(session.rx.clone()).map(move |leaderboard| {
-            Ok(Event::default().event("leaderboard").data(
-                LeaderboardRankings {
-                    rankings: leaderboard.rankings().take(leaderboard_size).collect(),
-                }
-                .render()
-                .expect("failed to render template"),
-            ))
-        }),
+        WatchStream::new(session.rx.clone()).map(|_| Ok(Event::default().event("leaderboard"))),
     )
     .keep_alive(KeepAlive::new()))
 }

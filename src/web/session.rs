@@ -20,8 +20,8 @@ pub struct Session {
 
     // Users
     pub leaderboard: Leaderboard,
-    pub tx: Arc<watch::Sender<Leaderboard>>,
-    pub rx: watch::Receiver<Leaderboard>,
+    pub tx: Arc<watch::Sender<()>>,
+    pub rx: watch::Receiver<()>,
     pub cooldowns: HashMap<(i64, i64), OffsetDateTime>,
 }
 
@@ -49,7 +49,7 @@ impl Session {
         .await?
         .last_insert_rowid();
 
-        let (tx, rx) = watch::channel(Leaderboard::new());
+        let (tx, rx) = watch::channel(());
 
         Ok(Session {
             id,
@@ -102,8 +102,11 @@ impl Session {
         }
     }
 
-    pub fn update_leaderboard(&mut self, entry: LeaderboardEntry) {
-        self.tx
-            .send_modify(move |leaderboard| leaderboard.update(entry));
+    pub fn update_leaderboard(
+        &mut self,
+        entry: LeaderboardEntry,
+    ) -> Result<(), watch::error::SendError<()>> {
+        self.leaderboard.update(entry);
+        self.tx.send(())
     }
 }

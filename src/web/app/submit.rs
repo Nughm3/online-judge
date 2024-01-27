@@ -319,7 +319,7 @@ pub async fn submit(
         score,
         username: user.username().to_owned(),
         user_id,
-    });
+    })?;
 
     tracing::trace!("submission successfully judged and recorded");
 
