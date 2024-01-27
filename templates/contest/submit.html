@@ -60,25 +60,28 @@
           <th scope="col">Subtask</th>
           <th scope="col">Verdict</th>
           <th scope="col">Score</th>
+          <th scope="col">Maximum</th>
         </tr>
       </thead>
 
       <tbody>
-        {% for (verdict, score) in last.subtask_report.scores %}
+        {% for (verdict, score, max) in last.subtask_report.scores %}
         <tr>
           <th scope="row">{{ loop.index }}</th>
           <td>{{ verdict }}</td>
           <td>{{ score }}</td>
+          <td>{{ max }}</td>
         </tr>
         {% endfor %}
       </tbody>
 
       <tfoot>
-        {% set (verdict, score) = last.subtask_report.overall %}
+        {% set (verdict, score, max) = last.subtask_report.overall %}
         <tr>
           <th scope="col">&lowast;</th>
           <td>{{ verdict }}</td>
           <td>{{ score }}</td>
+          <td>{{ max }}</td>
         </tr>
       </tfoot>
     </table>

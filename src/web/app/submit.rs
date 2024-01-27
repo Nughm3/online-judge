@@ -49,8 +49,8 @@ pub struct TaskReport {
 }
 
 pub struct SubtaskReport {
-    scores: Vec<(Verdict, u32)>,
-    overall: (Verdict, u32),
+    scores: Vec<(Verdict, u32, u32)>,
+    overall: (Verdict, u32, u32),
 }
 
 pub async fn submissions(
@@ -112,7 +112,7 @@ pub async fn submissions(
             runtime_error: submission.runtime_error,
             subtask_report: SubtaskReport {
                 scores: Vec::new(),
-                overall: (Verdict::Accepted, 0),
+                overall: (Verdict::Accepted, 0, 0),
             },
         })
     })
@@ -135,12 +135,17 @@ pub async fn submissions(
         });
 
         let scores = &mut report.subtask_report.scores;
-        let (overall_verdict, overall_score) = &mut report.subtask_report.overall;
+        let (overall_verdict, overall_score, overall_max) = &mut report.subtask_report.overall;
 
+        let mut idx = 0;
         while let Some((verdict, score)) = stream.try_next().await? {
-            scores.push((verdict, score));
+            // NOTE: this works on the assumption that 1 point is awarded for each correct test
+            let max = session.contest.tasks[task_id as usize].subtasks[idx].tests as u32;
+            scores.push((verdict, score, max));
             *overall_verdict = (*overall_verdict).min(verdict);
             *overall_score += score;
+            *overall_max += max;
+            idx += 1;
         }
     }
 
