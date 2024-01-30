@@ -22,7 +22,13 @@ pub struct Session {
     pub leaderboard: Leaderboard,
     pub tx: Arc<watch::Sender<()>>,
     pub rx: watch::Receiver<()>,
-    pub cooldowns: HashMap<(i64, i64), OffsetDateTime>,
+    pub users: HashMap<(i64, i64), UserTask>,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserTask {
+    pub score: u32,
+    pub cooldown: OffsetDateTime,
 }
 
 pub type SessionResult<T> = Result<T, SessionError>;
@@ -56,7 +62,7 @@ impl Session {
             contest,
             start: None,
             end: None,
-            cooldowns: HashMap::new(),
+            users: HashMap::new(),
             tx: Arc::new(tx),
             rx,
             leaderboard: Leaderboard::new(),
@@ -104,9 +110,21 @@ impl Session {
 
     pub fn update_leaderboard(
         &mut self,
-        entry: LeaderboardEntry,
+        username: &str,
+        user_id: i64,
     ) -> Result<(), watch::error::SendError<()>> {
-        self.leaderboard.update(entry);
+        let score = self
+            .users
+            .iter()
+            .filter_map(|((id, _), user_task)| (*id == user_id).then_some(user_task.score))
+            .sum();
+
+        self.leaderboard.update(LeaderboardEntry {
+            score,
+            username: username.to_owned(),
+            user_id,
+        });
+
         self.tx.send(())
     }
 }

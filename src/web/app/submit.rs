@@ -16,7 +16,7 @@ use tower_cookies::{Cookie, Cookies};
 use super::{App, ContestNavigation};
 use crate::{
     judge::{GradedTask, JudgeError, Submission, Verdict},
-    web::{auth::AuthSession, error::*, session::LeaderboardEntry},
+    web::{auth::AuthSession, error::*, session::UserTask},
 };
 
 const LANGUAGE_COOKIE: &str = "preferred-language";
@@ -75,10 +75,10 @@ pub async fn submissions(
     let accepting_submissions = session.start.is_some() && session.end.is_none();
 
     let cooldown = session
-        .cooldowns
+        .users
         .get(&(user_id, task_id))
-        .and_then(|cooldown| {
-            let elapsed = OffsetDateTime::now_utc() - *cooldown;
+        .and_then(|user_task| {
+            let elapsed = OffsetDateTime::now_utc() - user_task.cooldown;
             let contest_cooldown = session.contest.cooldown;
             (elapsed < contest_cooldown).then_some((contest_cooldown - elapsed).whole_seconds())
         });
@@ -140,7 +140,7 @@ pub async fn submissions(
         let mut idx = 0;
         while let Some((verdict, score)) = stream.try_next().await? {
             // NOTE: this works on the assumption that 1 point is awarded for each correct test
-            let max = session.contest.tasks[task_id as usize].subtasks[idx].tests as u32;
+            let max = session.contest.tasks[task_id as usize - 1].subtasks[idx].tests as u32;
             scores.push((verdict, score, max));
             *overall_verdict = (*overall_verdict).min(verdict);
             *overall_score += score;
@@ -200,8 +200,8 @@ pub async fn submit(
             return Ok(Redirect::to(&redirect_url));
         }
 
-        if let Some(previous) = session.cooldowns.get(&(user_id, task_id)) {
-            if now - *previous < session.contest.cooldown {
+        if let Some(previous) = session.users.get(&(user_id, task_id)) {
+            if now - previous.cooldown < session.contest.cooldown {
                 tracing::trace!("user (ID: {user_id}) attempted to submit but was on cooldown");
                 return Ok(Redirect::to(&redirect_url));
             }
@@ -317,14 +317,15 @@ pub async fn submit(
     let session = Arc::make_mut(sessions.get_mut(&session_id).unwrap());
 
     session
-        .cooldowns
-        .insert((user_id, task_id), OffsetDateTime::now_utc());
+        .users
+        .entry((user_id, task_id))
+        .and_modify(|user_task| user_task.score = user_task.score.max(score))
+        .or_insert_with(|| UserTask {
+            score,
+            cooldown: OffsetDateTime::now_utc(),
+        });
 
-    session.update_leaderboard(LeaderboardEntry {
-        score,
-        username: user.username().to_owned(),
-        user_id,
-    })?;
+    session.update_leaderboard(user.username(), user_id)?;
 
     tracing::trace!("submission successfully judged and recorded");
 
