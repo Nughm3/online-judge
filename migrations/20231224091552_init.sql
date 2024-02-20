@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS submissions (
     verdict        TEXT NOT NULL,
     score          INTEGER NOT NULL,
     compile_error  TEXT,
-    runtime_error  TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );

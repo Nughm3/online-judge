@@ -14,8 +14,6 @@ pub type JudgeResult<T> = Result<T, JudgeError>;
 pub enum JudgeError {
     #[error("failed to compile submission, stderr: {0}")]
     CompileError(String),
-    #[error("submission exited with error, stderr: {0}")]
-    RuntimeError(String),
     #[error("failed to process submission output as UTF-8: {0}")]
     Utf8(#[from] std::str::Utf8Error),
     #[error("IO error: {0}")]

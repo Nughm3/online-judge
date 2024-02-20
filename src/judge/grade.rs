@@ -124,6 +124,11 @@ pub fn grade(task: &Task, results: &[TestResult]) -> GradedTask {
             })
         }
 
+        // TODO: replace this with a better scoring system
+        if subtask_grade.verdict != Verdict::Accepted {
+            subtask_grade.score = 0;
+        }
+
         grade.verdict = grade.verdict.min(subtask_grade.verdict);
         grade.score += subtask_grade.score;
         grade.subtasks.push(subtask_grade);

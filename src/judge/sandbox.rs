@@ -13,7 +13,6 @@ use serde_with::DeserializeFromStr;
 use tempfile::TempDir;
 use thiserror::Error;
 
-mod landlock;
 mod resource;
 mod seccomp;
 
@@ -113,14 +112,17 @@ impl Sandbox {
             .stderr(Stdio::piped());
 
         unsafe {
-            let dir = self.path().to_path_buf();
-            cmd.pre_exec(move || sandbox(dir.clone(), rlimits, profile));
+            cmd.pre_exec(move || sandbox(rlimits, profile));
         }
 
         let mut child = cmd.spawn()?;
 
         if let Some(stdin) = stdin {
-            child.stdin.take().expect("no stdin").write_all(stdin)?;
+            if let Err(e) = child.stdin.take().expect("no stdin").write_all(stdin) {
+                if e.kind() != io::ErrorKind::BrokenPipe {
+                    return Err(e);
+                }
+            }
         }
 
         let (stdout, stderr) = {
@@ -153,12 +155,8 @@ enum Profile {
     Run,
 }
 
-fn sandbox(dir: PathBuf, rlimits: ResourceLimits, profile: Profile) -> io::Result<()> {
+fn sandbox(rlimits: ResourceLimits, profile: Profile) -> io::Result<()> {
     use io::{Error, ErrorKind};
-
-    if let Profile::Run = profile {
-        landlock::restrict_thread(dir).map_err(|e| Error::new(ErrorKind::Other, e.to_string()))?;
-    }
 
     rlimits.set()?;
 

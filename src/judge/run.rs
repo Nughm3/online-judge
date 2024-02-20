@@ -1,5 +1,3 @@
-use std::io::ErrorKind;
-
 use rayon::prelude::*;
 
 use super::*;
@@ -95,18 +93,7 @@ fn test(
 ) -> JudgeResult<TestResult> {
     let output = match sandbox.run(command, test.input.as_bytes(), rlimits) {
         Ok(output) => output,
-        Err(e) => {
-            if let ErrorKind::BrokenPipe = e.kind() {
-                let verdict = Verdict::RuntimeError;
-                tracing::trace!("[{test_number}/{test_count}] {}", verdict.fmt_colored());
-                return Ok(TestResult {
-                    verdict,
-                    resource_usage: None,
-                });
-            } else {
-                return Err(JudgeError::Io(e));
-            }
-        }
+        Err(e) => return Err(JudgeError::Io(e)),
     };
 
     let stdout = std::str::from_utf8(&output.stdout)?;
@@ -134,9 +121,7 @@ fn test(
             panic!("process was killed by signal but it did not exceed the time or memory limit");
         }
     } else {
-        let stderr = std::str::from_utf8(&output.stderr)?;
-        tracing::trace!("stdout: {stdout}, stderr: {stderr}",);
-        return Err(JudgeError::RuntimeError(stderr.to_owned()));
+        Verdict::RuntimeError
     };
 
     tracing::trace!("[{test_number}/{test_count}] {}", verdict.fmt_colored());

@@ -53,7 +53,7 @@ COPY --from=build ${BUILD_DIR}/judge.toml ${JUDGE_DIR}/judge.toml
 RUN mkdir /judge/contests
 
 VOLUME ${JUDGE_DIR}
-
 EXPOSE 80
 ENV RUST_LOG=online_judge=trace,tower_http=trace
+
 CMD ${APP_NAME}

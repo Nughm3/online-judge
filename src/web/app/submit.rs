@@ -44,7 +44,6 @@ pub struct TaskReport {
     verdict: Verdict,
     score: u32,
     compile_error: Option<String>,
-    runtime_error: Option<String>,
     subtask_report: SubtaskReport,
 }
 
@@ -109,7 +108,6 @@ pub async fn submissions(
             verdict: submission.verdict.parse().expect("invalid verdict"),
             score: submission.score as u32,
             compile_error: submission.compile_error,
-            runtime_error: submission.runtime_error,
             subtask_report: SubtaskReport {
                 scores: Vec::new(),
                 overall: (Verdict::Accepted, 0, 0),
@@ -149,11 +147,20 @@ pub async fn submissions(
         }
     }
 
-    let overall = reports
-        .iter()
-        .map(|report| report.verdict)
-        .min()
-        .map(|verdict| (verdict, reports.iter().map(|report| report.score).sum()));
+    let overall = {
+        let mut overall = None;
+
+        for report in reports.iter() {
+            if overall.is_none() || {
+                let (verdict, score) = overall.unwrap();
+                report.score > score || report.verdict > verdict
+            } {
+                overall = Some((report.verdict, report.score));
+            }
+        }
+
+        overall
+    };
 
     Ok(SubmitPage {
         session_id,
@@ -229,24 +236,14 @@ pub async fn submit(
         .await?
     };
 
-    let (grade, compile_error, runtime_error) = match judge_result {
-        Ok(grade) => (grade, None, None),
+    let (grade, compile_error) = match judge_result {
+        Ok(grade) => (grade, None),
         Err(JudgeError::CompileError(stderr)) => (
             GradedTask {
                 verdict: Verdict::CompileError,
                 score: 0,
                 subtasks: Vec::new(),
             },
-            Some(stderr),
-            None,
-        ),
-        Err(JudgeError::RuntimeError(stderr)) => (
-            GradedTask {
-                verdict: Verdict::RuntimeError,
-                score: 0,
-                subtasks: Vec::new(),
-            },
-            None,
             Some(stderr),
         ),
         Err(e) => return Err(e.into()),
@@ -256,7 +253,7 @@ pub async fn submit(
     let score = grade.score;
 
     let submission_id = sqlx::query!(
-        "INSERT INTO submissions (user_id, session_id, task, datetime, code, language, verdict, score, compile_error, runtime_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO submissions (user_id, session_id, task, datetime, code, language, verdict, score, compile_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
         user_id,
         session_id,
         task_id,
@@ -266,7 +263,6 @@ pub async fn submit(
         verdict,
         score,
         compile_error,
-        runtime_error
     )
     .execute(app.db.pool()).await?.last_insert_rowid();
 
