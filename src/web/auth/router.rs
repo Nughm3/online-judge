@@ -8,7 +8,7 @@ use axum::{
 use axum_login::AuthzBackend;
 use serde::Deserialize;
 
-use super::{backend::AuthSession, user::User, Credentials, Permissions, RegisterCredentials};
+use super::{backend::AuthSession, Credentials, Permissions, RegisterCredentials};
 use crate::web::error::AppResult;
 
 pub fn router() -> Router {
@@ -93,7 +93,7 @@ async fn logout(mut auth_session: AuthSession) -> AppResult<Redirect> {
 #[derive(Template)]
 #[template(path = "auth/register.html")]
 struct RegisterTemplate {
-    error: Option<String>,
+    error: Option<&'static str>,
     next: Option<String>,
 }
 
@@ -115,7 +115,7 @@ async fn register(
 ) -> AppResult<impl IntoResponse> {
     if creds.password != creds.confirm {
         return Ok(RegisterTemplate {
-            error: Some(String::from("Passwords do not match")),
+            error: Some("Passwords do not match"),
             next: creds.next,
         }
         .into_response());
@@ -123,24 +123,33 @@ async fn register(
 
     let password = password_auth::generate_hash(&creds.password);
 
-    if sqlx::query_as!(
-        User,
-        "SELECT * FROM users WHERE username = ?;",
-        creds.username
-    )
-    .fetch_optional(auth_session.backend.pool())
-    .await?
-    .is_some()
+    if sqlx::query!("SELECT * FROM users WHERE username = ?;", creds.username)
+        .fetch_optional(auth_session.backend.pool())
+        .await?
+        .is_some()
     {
         return Ok(RegisterTemplate {
-            error: Some(String::from("User already exists")),
+            error: Some("User already exists"),
+            next: creds.next,
+        }
+        .into_response());
+    }
+
+    if sqlx::query!("SELECT * FROM users WHERE email = ?;", creds.email)
+        .fetch_optional(auth_session.backend.pool())
+        .await?
+        .is_some()
+    {
+        return Ok(RegisterTemplate {
+            error: Some("User with the same email already exists"),
             next: creds.next,
         }
         .into_response());
     }
 
     let result = sqlx::query!(
-        "INSERT OR IGNORE INTO users (username, password) VALUES (?, ?);",
+        "INSERT OR IGNORE INTO users (email, username, password) VALUES (?, ?, ?);",
+        creds.email,
         creds.username,
         password,
     )

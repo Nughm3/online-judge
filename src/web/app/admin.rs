@@ -210,7 +210,7 @@ async fn users(
 
     let users = sqlx::query!("SELECT * FROM users LIMIT 10 OFFSET ?;", offset)
         .fetch(app.db.pool())
-        .map(|res| res.map(|user| User::new(user.id, &user.username, &user.password)))
+        .map(|res| res.map(|user| User::new(user.id, &user.email, &user.username, &user.password)))
         .collect::<Result<_, _>>()
         .await?;
 
@@ -240,7 +240,7 @@ async fn delete_user(
     let user = sqlx::query!("SELECT * FROM users WHERE id = ?;", id)
         .fetch_optional(app.db.pool())
         .await?
-        .map(|user| User::new(user.id, &user.username, &user.password))
+        .map(|user| User::new(user.id, &user.email, &user.username, &user.password))
         .ok_or(AppError::StatusCode(StatusCode::NOT_FOUND))?;
 
     if auth_session

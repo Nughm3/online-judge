@@ -5,14 +5,16 @@ use axum_login::AuthUser;
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct User {
     pub(super) id: i64,
+    pub(super) email: String,
     pub(super) username: String,
     pub(super) password: String,
 }
 
 impl User {
-    pub fn new(id: i64, username: &str, password: &str) -> Self {
+    pub fn new(id: i64, email: &str, username: &str, password: &str) -> Self {
         User {
             id,
+            email: email.to_owned(),
             username: username.to_owned(),
             password: password.to_owned(),
         }
@@ -24,6 +26,10 @@ impl User {
 
     pub fn username(&self) -> &str {
         &self.username
+    }
+
+    pub fn email(&self) -> &str {
+        &self.email
     }
 
     pub(super) fn password(&self) -> &str {
@@ -47,6 +53,7 @@ impl fmt::Debug for User {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("User")
             .field("id", &self.id)
+            .field("email", &self.email)
             .field("username", &self.username)
             .field("password", &"[redacted]")
             .finish()
