@@ -19,9 +19,7 @@
   <h2>Contests</h2>
 
   <div hx-ext="sse" sse-connect="/sessions/sse">
-    <div hx-get="/sessions" hx-swap="innerHTML" hx-trigger="load, sse:session, every 1s" hx-indicator="#progress">
-      <progress id="progress" class="htmx-indicator"></progress>
-    </div>
+    <div hx-get="/sessions" hx-swap="innerHTML" hx-trigger="load, sse:session, every 1s"></div>
   </div>
 </section>
 {% endblock %}

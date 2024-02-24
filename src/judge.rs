@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use axum_typed_multipart::TryFromMultipart;
 use serde::Deserialize;
 use thiserror::Error;
@@ -40,4 +42,12 @@ pub struct Language {
     pub filename: String,
     pub build: Option<Command>,
     pub run: Command,
+}
+
+impl Language {
+    pub fn extension(&self) -> Option<&str> {
+        Path::new(&self.filename)
+            .extension()
+            .and_then(|s| s.to_str())
+    }
 }

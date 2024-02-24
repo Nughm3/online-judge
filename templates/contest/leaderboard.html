@@ -18,8 +18,6 @@
 
 <div hx-ext="sse" sse-connect="/contest/{{ session_id }}/leaderboard/sse">
   <div hx-get="/contest/{{ session_id }}/leaderboard/rankings" hx-swap="innerHTML"
-    hx-trigger="load, sse:leaderboard, every 1s" hx-indicator="#progress">
-    <progress id="progress" class="htmx-indicator"></progress>
-  </div>
+    hx-trigger="load, sse:leaderboard, every 1s"></div>
 </div>
 {% endblock %}

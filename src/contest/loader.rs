@@ -23,7 +23,6 @@ struct ContestFrontmatter {
     name: String,
     #[serde(rename = "tasks")]
     task_paths: Vec<String>,
-    languages: Option<Vec<String>>,
     duration: Duration,
     #[serde(default = "defaults::cooldown")]
     cooldown: Duration,
@@ -61,7 +60,6 @@ impl Contest {
             path: path.to_path_buf(),
             page,
             tasks,
-            languages: frontmatter.languages,
             duration: frontmatter.duration,
             cooldown: frontmatter.cooldown,
             leaderboard_size: frontmatter.leaderboard_size,

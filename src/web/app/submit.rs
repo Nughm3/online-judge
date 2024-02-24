@@ -15,7 +15,7 @@ use tower_cookies::{Cookie, Cookies};
 
 use super::{App, ContestNavigation};
 use crate::{
-    judge::{GradedTask, JudgeError, Submission, Verdict},
+    judge::{GradedTask, JudgeError, Language, Submission, Verdict},
     web::{auth::AuthSession, error::*, session::UserTask},
 };
 
@@ -30,8 +30,9 @@ pub struct SubmitPage {
     // Submission form
     accepting_submissions: bool,
     cooldown: Option<i64>,
-    languages: Vec<String>,
+    languages: Vec<Language>,
     preferred_language: Option<String>,
+    accept: String,
 
     // Submission results
     reports: Vec<TaskReport>,
@@ -82,17 +83,18 @@ pub async fn submissions(
             (elapsed < contest_cooldown).then_some((contest_cooldown - elapsed).whole_seconds())
         });
 
-    let languages = session.contest.languages.clone().unwrap_or_else(|| {
-        app.judge_config
-            .languages
-            .iter()
-            .map(|language| language.name.clone())
-            .collect()
-    });
+    let languages = app.judge_config.languages.clone();
 
     let preferred_language = cookies
         .get(LANGUAGE_COOKIE)
         .map(|cookie| cookie.value().to_owned());
+
+    let accept = languages
+        .iter()
+        .flat_map(|l| l.extension())
+        .map(|s| format!(".{s}"))
+        .collect::<Vec<_>>()
+        .join(", "); // .intersperse()
 
     let mut reports: Vec<_> = sqlx::query!(
         "SELECT * FROM submissions WHERE user_id = ? AND session_id = ? AND task = ?;",
@@ -165,10 +167,13 @@ pub async fn submissions(
     Ok(SubmitPage {
         session_id,
         task_id,
+
         accepting_submissions,
         cooldown,
         languages,
         preferred_language,
+        accept,
+
         reports,
         overall,
     })

@@ -3,14 +3,14 @@
   <form hx-boost hx-post="/contest/{{ session_id }}/submit/{{ task_id }}" hx-encoding="multipart/form-data"
     hx-target="#submission-container" hx-indicator="#progress">
     <div class="grid">
-      <input id="code" type="file" name="code" required />
+      <input id="code" type="file" name="code" accept="{{ accept }}" required />
 
-      <select id="language" name="language">
+      <select id="language" name="language" required>
         {% for language in languages %}
-        {% if preferred_language.is_some() && language == preferred_language.as_ref().unwrap() %}
-        <option selected>{{ language }}</option>
+        {% if preferred_language.is_some() && language.name.as_str() == preferred_language.as_ref().unwrap() %}
+        <option selected>{{ language.name }}</option>
         {% else %}
-        <option>{{ language }}</option>
+        <option>{{ language.name }}</option>
         {% endif %}
         {% endfor %}
       </select>
@@ -136,4 +136,28 @@
     })();
   </script>
   {% endif %}
+
+  <script>
+    const upload = document.getElementById("code");
+    const select = document.getElementById("language");
+
+    const filetypes = new Map();
+    // {% for language in languages %}
+    // {% if let Some(extension) = language.extension() %}
+    filetypes.set("{{ extension }}", "{{ language.name }}");
+    // {% endif %}
+    // {% endfor %}
+
+    upload.addEventListener("change", () => {
+      const files = upload.files;
+
+      if (files.length == 1) {
+        const extension = files[0].name.split(".").pop();
+        const language = filetypes.get(extension);
+
+        if (language != undefined)
+          select.value = language;
+      }
+    });
+  </script>
 </div>
