@@ -15,17 +15,20 @@ Use the `online-judge` command to start the server.
 
 ## Configuration
 
-Basic configuration is done through environment variables. `.env` files are supported.
+Basic configuration is done through environment variables and command line options. Command line options take precedence. `.env` files are supported.
+
+| Command Line Option    | Description                                   | Default             |
+| ---------------------- | --------------------------------------------- | ------------------- |
+| `-a`, `--address`      | Address to listen on                          | `0.0.0.0:80`        |
+| `-d`, `--database-url` | Location of the SQLite database               | `sqlite://judge.db` |
+| `-C`, `--contest-dir`  | Location of the contests                      | `contests`          |
+| `-s`, `--static-dir`   | Location of the [`static`](/static) directory | `static`            |
+| `-c`, `--config`       | Location of the judge config file             | `judge.toml`        |
 
 | Environment Variable | Description                                   | Default             |
 | -------------------- | --------------------------------------------- | ------------------- |
 | `SERVER_ADDRESS`     | Address to listen on                          | `0.0.0.0:80`        |
 | `DATABASE_URL`       | Location of the SQLite database               | `sqlite://judge.db` |
-| `CONTEST_DIR`        | Location of the contests                      | `contests`          |
-| `STATIC_DIR`         | Location of the [`static`](/static) directory | `static`            |
-| `JUDGE_CONFIG`       | Location of the judge config file             | `judge.toml`        |
-
-See [`main.rs`](/src/main.rs) for more information on how these environment variables are loaded.
 
 Since the online judge is a Rust program, it also uses some conventional environment variables for logging and backtraces:
 
@@ -43,10 +46,9 @@ Contests are stored in an on-disk format, loaded on startup. The contest format 
 The judge executor uses a sandbox that uses Linux security APIs to control the execution of code submissions. These APIs include:
 
 - [seccomp](https://man7.org/linux/man-pages/man2/seccomp.2.html)
-- [landlock](https://landlock.io/)
 - [rlimit](https://man7.org/linux/man-pages/man2/setrlimit.2.html)
 
-Due to the current lack of security auditing, it is recommended to sandbox the **entire judge process** for security reasons. This could be done by running it in a container or VM.
+Due to the current lack of security auditing, it is recommended to sandbox the **entire judge process** for security reasons. This could be done by running it in a container or VM. A [Dockerfile](/Dockerfile) is provided.
 
 ## License
 
