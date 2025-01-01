@@ -2,6 +2,8 @@
 
 Online judge for competitive programming contests.
 
+**NOTE:** This project is an earlier version of a coding contest platform, and has now been superseded by [Nughm3/contest-platform](https://github.com/Nughm3/contest-platform).
+
 ## Installation
 
 ```bash
